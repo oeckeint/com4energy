@@ -1,0 +1,14 @@
+services:
+  com4energy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ghost-flows
+    env_file:
+      - .env
+    volumes:
+      - ${DATABASE_BACKUP_PATH}:/app/database/backups
+      - ${MY_CNF_FILE}:/root/.my.cnf
+    ports:
+      - "8080:8080"
+    restart: always
