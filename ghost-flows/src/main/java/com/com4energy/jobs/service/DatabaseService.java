@@ -83,6 +83,8 @@ public class DatabaseService {
         command.add("3306");
         command.add("-u");
         command.add(username);
+        command.add("--ignore-table=" + database + ".schema_table_statistics");
+        command.add("--ignore-table=" + database + ".schema_table_statistics_with_buffer");
         command.add(database);
         return command;
     }
