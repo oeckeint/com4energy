@@ -1,25 +1,43 @@
 package com.com4energy.recordsapi.service;
 
 import com.com4energy.recordsapi.dto.MedidaQH;
+
 import com.com4energy.recordsapi.repository.MedidaQHRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class MedidaQHService {
 
     private final MedidaQHRepository medidaQHRepository;
 
-    @Autowired
-    public MedidaQHService(MedidaQHRepository medidaQHRepository) {
-        this.medidaQHRepository = medidaQHRepository;
-    }
-
     public List<MedidaQH> findAll() {
         return medidaQHRepository.findAll();
+    }
+
+    public List<MedidaQH> findLastNNoPage(Integer clienteId, int n) {
+        Pageable descPageable = org.springframework.data.domain.PageRequest.of(0, n, org.springframework.data.domain.Sort.by("fecha").descending());
+        return medidaQHRepository.findLastNNoPage(clienteId, descPageable);
+    }
+
+    public Page<MedidaQH> findAll(Integer clienteId, LocalDateTime start, LocalDateTime end, Pageable pageable) {
+        log.info("findAll called with clienteId={}, start={}, end={}, pageable={}", clienteId, start, end, pageable);
+        if (start == null && end == null) {
+            // Si no hay fechas, traemos los últimos registros paginados
+            return medidaQHRepository.findByFilters(clienteId, null, null, pageable);
+        }
+        return medidaQHRepository.findByFilters(clienteId, start, end, pageable);
     }
 
     public Optional<MedidaQH> findById(int id) {
@@ -32,5 +50,9 @@ public class MedidaQHService {
 
     public void deleteById(int id) {
         medidaQHRepository.deleteById(id);
+    }
+
+    public List<MedidaQH> findAllForCliente(Integer idCliente) {
+        return medidaQHRepository.findAllForCliente(idCliente);
     }
 }
