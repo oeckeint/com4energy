@@ -2,9 +2,12 @@ package com.com4energy.recordsapi.controller.common;
 
 import com.com4energy.recordsapi.common.MessageKey;
 import com.com4energy.recordsapi.common.Messages;
+import com.com4energy.recordsapi.controller.common.dto.PageResponse;
+import com.com4energy.recordsapi.controller.common.mapper.PageMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 
+import java.net.URI;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -119,5 +122,28 @@ public final class ResponseHelper {
             .header(Messages.get(MessageKey.HEADER_INFO), Messages.get(messageKey))
             .body(collection);
     }
+
+    public static <T> ResponseEntity<PageResponse<T>> page(Page<T> page) {
+
+        PageResponse<T> response = PageMapper.from(page);
+
+        if (page.isEmpty()) {
+            return ResponseEntity.ok()
+                    .header(
+                            Messages.get(MessageKey.HEADER_INFO),
+                            Messages.get(MessageKey.NO_DATA_FOUND_CRITERIA)
+                    )
+                    .body(response);
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    public static <T> ResponseEntity<T> created(URI location, T body) {
+        return ResponseEntity
+                .created(location)
+                .body(body);
+    }
+
 }
 
