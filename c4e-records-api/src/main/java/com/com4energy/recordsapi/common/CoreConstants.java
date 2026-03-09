@@ -2,6 +2,7 @@ package com.com4energy.recordsapi.common;
 
 public final class CoreConstants {
 
+    // Field names
     public static final String ID_CLIENTE = "idCliente";
     public static final String FECHA = "fecha";
 
