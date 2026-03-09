@@ -1,7 +1,5 @@
 package com.com4energy.recordsapi.service;
 
-import com.com4energy.recordsapi.aspect.annotation.Cacheable;
-import com.com4energy.recordsapi.aspect.annotation.ValidateClienteExists;
 import com.com4energy.recordsapi.dto.MedidaQH;
 
 import com.com4energy.recordsapi.repository.MedidaQHRepository;
@@ -33,8 +31,6 @@ public class MedidaQHService {
         return medidaQHRepository.findLastNNoPage(clienteId, descPageable);
     }
 
-    @ValidateClienteExists(paramName = "clienteId")
-    @Cacheable(ttlSeconds = 60) // Cachear por 1 minuto
     public Page<MedidaQH> findAll(Integer clienteId, LocalDateTime start, LocalDateTime end, Pageable pageable) {
         if (start == null && end == null) {
             // Si no hay fechas, traemos los últimos registros paginados
@@ -55,7 +51,6 @@ public class MedidaQHService {
         medidaQHRepository.deleteById(id);
     }
 
-    @ValidateClienteExists(paramName = "idCliente")
     public List<MedidaQH> findAllForCliente(Integer idCliente) {
         return medidaQHRepository.findAllForCliente(idCliente);
     }
