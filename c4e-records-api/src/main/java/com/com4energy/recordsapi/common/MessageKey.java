@@ -9,7 +9,10 @@ public enum MessageKey {
 
     HEADER_INFO("header.info.message"),
 
+    INVALID_CLIENT_ID("validation.cliente.invalid.id"),
     INVALID_EMAIL("validation.email.invalid"),
+
+    MEDIDA_NOT_FOUND("medidaqh.not.found"),
 
     NO_DATA_FOUND_CRITERIA("no.data.found.criteria"),
 

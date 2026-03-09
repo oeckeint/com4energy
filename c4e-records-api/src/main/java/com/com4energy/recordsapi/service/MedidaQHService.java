@@ -1,11 +1,12 @@
 package com.com4energy.recordsapi.service;
 
+import com.com4energy.recordsapi.aspect.annotation.Cacheable;
+import com.com4energy.recordsapi.aspect.annotation.ValidateClienteExists;
 import com.com4energy.recordsapi.dto.MedidaQH;
 
 import com.com4energy.recordsapi.repository.MedidaQHRepository;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,7 +18,6 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class MedidaQHService {
 
     private static final String FIELD_FECHA = "fecha";
@@ -33,8 +33,9 @@ public class MedidaQHService {
         return medidaQHRepository.findLastNNoPage(clienteId, descPageable);
     }
 
+    @ValidateClienteExists(paramName = "clienteId")
+    @Cacheable(ttlSeconds = 60) // Cachear por 1 minuto
     public Page<MedidaQH> findAll(Integer clienteId, LocalDateTime start, LocalDateTime end, Pageable pageable) {
-        log.info("findAll called with clienteId={}, start={}, end={}, pageable={}", clienteId, start, end, pageable);
         if (start == null && end == null) {
             // Si no hay fechas, traemos los últimos registros paginados
             return medidaQHRepository.findByFilters(clienteId, null, null, pageable);
@@ -54,6 +55,7 @@ public class MedidaQHService {
         medidaQHRepository.deleteById(id);
     }
 
+    @ValidateClienteExists(paramName = "idCliente")
     public List<MedidaQH> findAllForCliente(Integer idCliente) {
         return medidaQHRepository.findAllForCliente(idCliente);
     }
