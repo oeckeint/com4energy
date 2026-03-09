@@ -20,6 +20,8 @@ import java.time.LocalDateTime;
 @Slf4j
 public class MedidaQHService {
 
+    private static final String FIELD_FECHA = "fecha";
+
     private final MedidaQHRepository medidaQHRepository;
 
     public List<MedidaQH> findAll() {
@@ -27,7 +29,7 @@ public class MedidaQHService {
     }
 
     public List<MedidaQH> findLastNNoPage(Integer clienteId, int n) {
-        Pageable descPageable = org.springframework.data.domain.PageRequest.of(0, n, org.springframework.data.domain.Sort.by("fecha").descending());
+        Pageable descPageable = org.springframework.data.domain.PageRequest.of(0, n, org.springframework.data.domain.Sort.by(FIELD_FECHA).descending());
         return medidaQHRepository.findLastNNoPage(clienteId, descPageable);
     }
 

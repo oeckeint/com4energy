@@ -1,5 +1,10 @@
-package com.com4energy.recordsapi.controller;
+package com.com4energy.recordsapi.controller.medidas.qh;
 
+import com.com4energy.recordsapi.common.CoreConstants;
+import com.com4energy.recordsapi.common.MessageKey;
+import com.com4energy.recordsapi.common.Messages;
+import com.com4energy.recordsapi.controller.common.ApiConstants;
+import com.com4energy.recordsapi.controller.medidas.MedidasConstants;
 import com.com4energy.recordsapi.dto.MedidaQH;
 import com.com4energy.recordsapi.service.MedidaQHService;
 import org.springframework.data.domain.Page;
@@ -19,17 +24,17 @@ import java.util.List;
 
 @RestController
 @AllArgsConstructor
-@RequestMapping("/medidaqh")
+@RequestMapping(MedidaQHConstants.BASE_PATH)
 public class MedidaQHController {
 
     private final MedidaQHService medidaQHService;
 
     @GetMapping
     public ResponseEntity<?> getAll(@RequestParam(required = false) Integer clienteId,
-                                 @RequestParam(required = false, name = "idCliente") Integer idClienteAlias,
+                                 @RequestParam(required = false, name = CoreConstants.ID_CLIENTE) Integer idClienteAlias,
                                  @RequestParam(required = false) String startDate,
                                  @RequestParam(required = false) String endDate,
-                                 @PageableDefault(size = 24, sort = "fecha", direction = Sort.Direction.ASC) Pageable pageable) {
+                                 @PageableDefault(size = ApiConstants.DEFAULT_PAGE_SIZE, sort = CoreConstants.FECHA, direction = Sort.Direction.ASC) Pageable pageable) {
         LocalDateTime start = null;
         LocalDateTime end = null;
 
@@ -43,7 +48,7 @@ public class MedidaQHController {
                 start = OffsetDateTime.parse(startDate).toLocalDateTime();
             } catch (Exception e) {
                 // if not offset format, try simple date or local datetime
-                if (startDate.length() == 10) { // yyyy-MM-dd
+                if (startDate.length() == MedidasConstants.DATE_ONLY_LENGTH) { // yyyy-MM-dd
                     start = LocalDate.parse(startDate).atStartOfDay();
                 } else {
                     start = LocalDateTime.parse(startDate);
@@ -54,8 +59,13 @@ public class MedidaQHController {
             try {
                 end = OffsetDateTime.parse(endDate).toLocalDateTime();
             } catch (Exception e) {
-                if (endDate.length() == 10) {
-                    end = LocalDate.parse(endDate).atTime(23, 59, 59, 999999999);
+                if (endDate.length() == MedidasConstants.DATE_ONLY_LENGTH) {
+                    end = LocalDate.parse(endDate).atTime(
+                        MedidasConstants.END_OF_DAY_HOUR,
+                        MedidasConstants.END_OF_DAY_MINUTE,
+                        MedidasConstants.END_OF_DAY_SECOND,
+                        MedidasConstants.END_OF_DAY_NANO
+                    );
                 } else {
                     end = LocalDateTime.parse(endDate);
                 }
@@ -64,10 +74,10 @@ public class MedidaQHController {
 
         // If only one side provided, make a sensible 24h window
         if (start != null && end == null) {
-            end = start.plusDays(1);
+            end = start.plusDays(MedidasConstants.WINDOW_DAYS);
         }
         if (end != null && start == null) {
-            start = end.minusDays(1);
+            start = end.minusDays(MedidasConstants.WINDOW_DAYS);
         }
 
         // NO aplicamos ventana de 24h por defecto si no hay fechas, 
@@ -79,23 +89,23 @@ public class MedidaQHController {
             // Devolvemos un 200 pero con un mensaje claro en lugar de solo content []
             // Esto ayuda al frontend a saber que no es un error de conexión, sino que no hay datos.
             return ResponseEntity.ok()
-                .header("X-Info-Message", "No data found for the given criteria")
+                .header(Messages.get(MessageKey.HEADER_INFO), Messages.get(MessageKey.NO_DATA_FOUND_CRITERIA))
                 .body(result);
         }
         
         return ResponseEntity.ok(result);
     }
 
-    @GetMapping("/last24h")
+    @GetMapping(MedidaQHConstants.LAST_24H_PATH)
     public Page<MedidaQH> last24Hours(@RequestParam(required = false) Integer clienteId,
-                                      @PageableDefault(size = 24, sort = "fecha", direction = Sort.Direction.ASC) Pageable pageable) {
+                                      @PageableDefault(size = ApiConstants.DEFAULT_PAGE_SIZE, sort = CoreConstants.FECHA, direction = Sort.Direction.ASC) Pageable pageable) {
         OffsetDateTime now = OffsetDateTime.now();
         LocalDateTime end = now.toLocalDateTime();
-        LocalDateTime start = now.minusDays(1).toLocalDateTime();
+        LocalDateTime start = now.minusDays(MedidasConstants.WINDOW_DAYS).toLocalDateTime();
         return medidaQHService.findAll(clienteId, start, end, pageable);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping(ApiConstants.ID_PATH)
     public MedidaQH getById(@PathVariable int id) {
         return medidaQHService.findById(id).orElseThrow();
     }
@@ -103,17 +113,12 @@ public class MedidaQHController {
     @PostMapping
     public ResponseEntity<MedidaQH> save(@Validated @RequestBody MedidaQH medidaQH) {
         MedidaQH saved = medidaQHService.save(medidaQH);
-        URI location = URI.create("/medidaqh/" + saved.getIdMedidaQH());
+        URI location = URI.create(MedidaQHConstants.BASE_PATH + "/" + saved.getIdMedidaQH());
         return ResponseEntity.created(location).body(saved);
     }
 
-    @DeleteMapping("/{id}")
-    public void deleteById(@PathVariable int id) {
-        medidaQHService.deleteById(id);
-    }
-
-    @GetMapping("/testall")
-    public List<MedidaQH> getAllForCliente(@RequestParam Integer idCliente) {
+    @GetMapping(ApiConstants.TEST_ALL_PATH)
+    public List<MedidaQH> getAllForCliente(@RequestParam(name = CoreConstants.ID_CLIENTE) Integer idCliente) {
         return medidaQHService.findAllForCliente(idCliente);
     }
 
