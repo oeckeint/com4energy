@@ -2,6 +2,9 @@ package com.com4energy.recordsapi.common;
 
 public enum MessageKey {
 
+    ERROR_UNEXPECTED_NO_PARAM("error.unexpected.no_param"),
+    ERROR_UNEXPECTED_USE_PARAM("error.unexpected.w_param"),
+
     ENDPOINT_WORKS("endpoint.works"),
 
     HEADER_INFO("header.info.message"),
