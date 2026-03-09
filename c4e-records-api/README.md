@@ -19,6 +19,7 @@
 - [Instalación y Configuración](#-instalación-y-configuración)
 - [Uso de la API](#-uso-de-la-api)
 - [Programación Orientada a Aspectos (AOP)](#-programación-orientada-a-aspectos-aop)
+- [Gestión de Migraciones con Liquibase](#-gestión-de-migraciones-con-liquibase)
 - [Roadmap](#-roadmap)
 - [Arquitectura Futura](#-arquitectura-futura)
 - [Consideraciones de Performance](#-consideraciones-de-performance)
@@ -123,6 +124,13 @@ Controllers ──────┼─→ ValidationAspect (Validaciones)
 - Sistema de caché simple en memoria
 - Monitoreo de performance de queries
 
+✅ **Gestión de Migraciones con Liquibase**
+- Versionado de cambios de esquema de BD
+- Migraciones automáticas al iniciar
+- Historial completo de cambios (databasechangelog)
+- Reproducibilidad en todos los ambientes
+- Rollback y reversibilidad de cambios
+
 ✅ **Manejo de Errores**
 - Gestión global de excepciones
 - Respuestas de error estandarizadas
@@ -152,14 +160,17 @@ Controllers ──────┼─→ ValidationAspect (Validaciones)
 - **Spring Data JPA** - Persistencia de datos
 - **Spring AOP** - Programación orientada a aspectos
 - **Spring Boot Actuator** - Monitoreo y métricas
+- **Liquibase** - Gestión de migraciones de BD
 
 ### Base de Datos
 - **MySQL 8.0** - Base de datos relacional principal
+- **Liquibase** - Control de versiones y migraciones
 
 ### Herramientas
 - **Maven 3.9+** - Gestión de dependencias
 - **Lombok** - Reducción de código boilerplate
 - **Docker** - Contenerización
+- **Liquibase CLI** - Herramientas de línea de comandos (opcional)
 
 ### Futuras
 - **RabbitMQ** - Mensajería asíncrona (En roadmap)
@@ -523,7 +534,128 @@ Para más información sobre AOP, consulta:
 
 ---
 
+## 🗄️ Gestión de Migraciones con Liquibase
+
+Este proyecto utiliza **Liquibase** con formato **SQL** para gestionar cambios de esquema de base de datos de manera versionada y reproducible.
+
+### Estructura de Archivos
+
+```
+src/main/resources/db/changelog/
+├── db.changelog-master.xml          # Archivo maestro (XML)
+└── migrations/                       # Todas las migraciones SQL aquí
+    ├── 000_RA-011_test.sql          # Ejemplo: Migración de prueba
+    ├── 001_RA-012_create_table.sql  # Ejemplo: Crear tabla
+    └── 002_RA-013_add_column.sql    # Ejemplo: Agregar columna
+```
+
+### Formato de Archivos SQL
+
+**Convención de nombres:** `<orden>_<ticket>_<descripcion>.sql`
+
+**Estructura de cada archivo:**
+```sql
+--liquibase formatted sql
+
+--changeset <autor>:<ticket>
+--comment <titulo del ticket de Jira>
+
+-- SQL statements aquí
+CREATE TABLE ejemplo (...);
+
+--rollback <estrategia de rollback>
+```
+
+**Ejemplo completo:**
+```sql
+--liquibase formatted sql
+
+--changeset jesus:RA-012
+--comment Crear tabla medidaqh
+
+CREATE TABLE medidaqh (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(255)
+);
+
+--rollback DROP TABLE medidaqh;
+```
+
+### Características de Liquibase
+
+✅ **Versionado de BD**
+- Cada cambio identificado por autor:ticket de Jira
+- Historial completo en tabla `databasechangelog`
+- Trazabilidad completa con Jira
+
+✅ **Automatización**
+- Migraciones se ejecutan automáticamente al iniciar
+- Incluye todos los .sql de migrations/ en orden alfabético
+- Idempotentes (no repiten cambios)
+
+✅ **Reproducibilidad**
+- Mismo esquema en dev, staging, producción
+- Migraciones ordenadas por prefijo numérico (000, 001, 002)
+
+✅ **Reversibilidad**
+- Estrategia de rollback definida en cada archivo
+- Posibilidad de revertir cambios
+
+### Cómo Agregar Nueva Migración
+
+#### 1. Crear archivo
+```bash
+touch src/main/resources/db/changelog/migrations/003_RA-015_add_email.sql
+```
+
+#### 2. Escribir contenido
+```sql
+--liquibase formatted sql
+
+--changeset tu-nombre:RA-015
+--comment Agregar columna de email
+
+ALTER TABLE medidaqh ADD COLUMN email VARCHAR(255);
+
+--rollback ALTER TABLE medidaqh DROP COLUMN email;
+```
+
+#### 3. Commit
+```bash
+git add migrations/003_RA-015_add_email.sql
+git commit -m "feat(db): RA-015 add email column"
+```
+
+#### 4. Ejecutar
+```bash
+./mvnw spring-boot:run
+```
+
+**¡Eso es todo!** No necesitas modificar el archivo maestro XML.
+
+### Verificar Cambios Ejecutados
+
+```sql
+-- Ver qué migraciones se ejecutaron
+SELECT id, author, filename, dateexecuted 
+FROM databasechangelog 
+ORDER BY orderexecuted;
+```
+
+### Documentación Completa
+
+Ver `LIQUIBASE.md` para:
+- Formato detallado de archivos SQL
+- Ejemplos completos (crear tabla, índices, datos)
+- Integración con Jira
+- Mejores prácticas
+- Comandos Maven
+- Solución de problemas
+
+---
+
 ## 🗺️ Roadmap
+
 
 ### ✅ Fase 1: MVP Funcional (Completado)
 - [x] API REST básica con CRUD
@@ -769,10 +901,14 @@ spring.datasource.hikari.connection-timeout=20000
 ### Documentos Disponibles
 
 - **README.md** (este archivo) - Documentación principal del proyecto
+- **QUICKSTART.md** - Inicio rápido en 5 minutos
+- **ARCHITECTURE.md** - Arquitectura y patrones de diseño
 - **AOP-QUICKSTART.md** - Guía rápida de uso de aspectos AOP
 - **AOP-README.md** - Documentación completa de AOP
 - **AOP-SUMMARY.md** - Resumen ejecutivo de AOP
+- **LIQUIBASE.md** - Documentación de migraciones con formato SQL
 - **test-aop.sh** - Script de pruebas de aspectos
+- **update-docker.sh** - Script para actualizar Docker
 
 ### Enlaces Útiles
 
