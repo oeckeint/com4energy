@@ -1,10 +1,10 @@
 -- liquibase formatted sql
 
 -- changeset jesus:RA-012-seed context:dev,qa
--- comment Seed inicial de datos de prueba para incidents_log
--- precondition-table-exists table:incidents_log schema:sge
+-- comment Seed inicial de datos de prueba para incidents
+-- precondition-table-exists table:incidents schema:sge
 
-INSERT INTO sge.incidents_log (
+INSERT INTO sge.incidents (
     service_name,
     environment,
     endpoint,
@@ -119,4 +119,4 @@ INSERT INTO sge.incidents_log (
           'system'
       );
 
--- rollback DELETE FROM sge.incidents_log WHERE created_by='system';
+-- rollback DELETE FROM sge.incidents WHERE created_by='system';
