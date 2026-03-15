@@ -13,11 +13,54 @@ En este proyecto usamos **formato SQL** (no YAML) con integración a **Jira** pa
 ```
 src/main/resources/db/changelog/
 ├── db.changelog-master.xml          # Archivo maestro (XML)
-└── migrations/                       # Todas las migraciones SQL aquí
-    ├── 000_RA-011_test.sql          # Ejemplo: Migración de prueba
-    ├── 001_RA-012_create_table.sql  # Ejemplo: Crear tabla
-    ├── 002_RA-013_add_column.sql    # Ejemplo: Agregar columna
-    └── 003_RA-014_add_indexes.sql   # Ejemplo: Agregar índices
+├── migrations/                       # Todas las migraciones SQL aquí
+│   ├── 000_RA-011_test.sql          # Ejemplo: Migración de prueba
+│   ├── 001_RA-012_create_table.sql  # Ejemplo: Crear tabla
+│   ├── 002_RA-013_add_column.sql    # Ejemplo: Agregar columna
+│   └── 003_RA-014_add_indexes.sql   # Ejemplo: Agregar índices
+└── seeds/                            # Datos iniciales (opcional)
+    └── 001_RA-12_seed.sql            # Datos de referencia
+```
+
+### Recomendación: Estructura Escalable
+
+Para proyectos grandes, puedes organizar por categoría:
+
+```
+src/main/resources/db/changelog/
+├── db.changelog-master.xml
+├── migrations/
+│   ├── auto/                         # Cambios AUTOMÁTICOS versionados
+│   │   ├── 000_RA-011_test.sql
+│   │   ├── 001_RA-012_create_tables.sql
+│   │   ├── 002_RA-013_add_columns.sql
+│   │   └── 003_RA-014_add_indexes.sql
+│   └── manual/                       # Cambios MANUALES u ocasionales
+│       ├── 100_RA-050_clean_duplicates.sql
+│       └── 101_RA-051_backfill_data.sql
+└── seeds/
+    ├── 001_RA-100_reference_data.sql
+    └── 002_RA-101_test_data.sql
+```
+
+**Ventajas:**
+- Separar cambios estructurales de scripts ocasionales
+- Claridad visual del tipo de cambio
+- Facilita auditoría
+
+**Actualizar db.changelog-master.xml:**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog>
+    <!-- Cambios automáticos/versionados -->
+    <includeAll path="migrations/auto" relativeToChangelogFile="true" />
+    
+    <!-- Scripts ocasionales/manuales -->
+    <includeAll path="migrations/manual" relativeToChangelogFile="true" />
+    
+    <!-- Datos iniciales -->
+    <includeAll path="seeds" relativeToChangelogFile="true" />
+</databaseChangeLog>
 ```
 
 ### Archivo Maestro (db.changelog-master.xml)
@@ -88,6 +131,7 @@ src/main/resources/db/changelog/
 --liquibase formatted sql
 
 --changeset <autor>:<ticket>
+--context:dev,qa,prod
 --comment <titulo del ticket de Jira>
 
 -- SQL statements aquí
@@ -98,6 +142,8 @@ CREATE TABLE ejemplo (
 
 --rollback <estrategia de rollback>
 ```
+
+**Nota Importante:** Todos los archivos de migración **DEBEN estar en formato `.sql`** y ejecutarse **solo con XML** usando `includeAll` en el `db.changelog-master.xml`. NO se usan archivos YAML.
 
 ### Componentes Explicados
 
@@ -131,7 +177,50 @@ CREATE TABLE ejemplo (
 - Relaciona el cambio con el ticket de Jira
 - Permite trazabilidad completa
 
-#### 3. Comentario (Línea 4)
+#### 3. Contextos (Línea 4)
+
+```sql
+--context:dev,qa,prod
+```
+
+**Propósito:** Define en qué ambientes se ejecuta este changeset.
+
+**Formatos válidos:**
+```sql
+--context:dev,qa,prod        # En todos los ambientes
+--context:dev,qa             # Solo en dev y qa
+--context:prod               # Solo en producción
+--context:development        # Solo en desarrollo
+```
+
+**Ejemplos de uso:**
+```sql
+-- Dato de prueba solo para desarrollo
+--context:development
+INSERT INTO configuracion VALUES ('test_key', 'test_value');
+
+-- Cambio que va a producción
+--context:prod
+CREATE TABLE audit_log (...);
+
+-- Disponible en todos lados
+--context:dev,qa,prod
+ALTER TABLE medidaqh ADD COLUMN estado VARCHAR(50);
+```
+
+**Configurar en application.properties:**
+```properties
+# En desarrollo
+spring.liquibase.contexts=development
+
+# En QA
+spring.liquibase.contexts=dev,qa
+
+# En producción
+spring.liquibase.contexts=prod
+```
+
+#### 4. Comentario (Línea 5)
 
 ```sql
 --comment <titulo del ticket de Jira>
@@ -151,7 +240,7 @@ CREATE TABLE ejemplo (
 - Relacionar con el ticket de Jira
 - Facilitar auditoría
 
-#### 4. SQL Statements (Líneas siguientes)
+#### 5. SQL Statements (Líneas siguientes)
 
 ```sql
 -- Tu código SQL aquí
@@ -169,7 +258,7 @@ ALTER TABLE ...
 - DELETE
 - Cualquier SQL válido de MySQL
 
-#### 5. Estrategia de Rollback (Última línea)
+#### 6. Estrategia de Rollback (Última línea)
 
 ```sql
 --rollback <SQL para revertir el cambio>
@@ -177,15 +266,54 @@ ALTER TABLE ...
 
 **Propósito:** Define cómo deshacer este cambio si es necesario.
 
-**Ejemplos:**
+**Estrategias según el tipo de cambio:**
+
 ```sql
+-- Para CREATE TABLE (reversible)
 --rollback DROP TABLE medidaqh;
+
+-- Para ALTER TABLE ADD COLUMN (reversible)
 --rollback ALTER TABLE medidaqh DROP COLUMN estado;
---rollback DELETE FROM config WHERE key='nueva_config';
---rollback SELECT 1;  -- Para cambios que no necesitan rollback real
+
+-- Para CREATE INDEX (reversible)
+--rollback DROP INDEX idx_medidaqh_cliente ON medidaqh;
+
+-- Para INSERT/UPDATE (puede no ser reversible)
+--rollback DELETE FROM configuracion WHERE clave = 'test';
+
+-- Para cambios NO reversibles o no críticos
+--rollback SELECT 1;
+```
+
+**Ejemplos en contexto:**
+
+```sql
+--liquibase formatted sql
+--changeset jesus:RA-012
+--comment Crear tabla principal para medidas
+
+CREATE TABLE medidaqh (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    valor INT
+);
+
+--rollback DROP TABLE medidaqh;
+```
+
+**Rollback múltiple (en orden inverso):**
+```sql
+CREATE TABLE tabla1 (...);
+CREATE TABLE tabla2 (...);
+CREATE INDEX idx1 ON tabla1(col);
+
+--rollback DROP INDEX idx1 ON tabla1;
+--rollback DROP TABLE tabla2;
+--rollback DROP TABLE tabla1;
 ```
 
 ---
+
+
 
 ## 📋 Ejemplos Completos
 
@@ -197,6 +325,7 @@ ALTER TABLE ...
 --liquibase formatted sql
 
 --changeset jesus:RA-012
+--context:dev,qa,prod
 --comment Crear tabla principal para medidas cuarto-horarias
 
 CREATE TABLE medidaqh (
@@ -365,7 +494,116 @@ GROUP BY id_cliente, DATE(fecha);
 --rollback DROP VIEW v_consumo_diario;
 ```
 
-### Ejemplo 9: Ejecutar Script Complejo
+### Ejemplo 10: Tabla para Registro de Incidentes/Excepciones/Warnings
+
+**Archivo:** `001_RA-012_create_table_incidents_logs.sql`
+
+**Propósito:** Esta tabla centraliza el registro de excepciones, warnings y errores producidos al procesar archivos, así como datos recibidos desde otros microservicios.
+
+**Características:**
+- Registro distribuido con trace_id y span_id
+- Clasificación por severidad (CRITICAL, ERROR, WARN, INFO)
+- Información del archivo procesado
+- Estado para gestión de incidentes
+- Datos flexibles con JSON metadata
+- Auditoría completa (created_on, updated_on, usuarios)
+
+```sql
+--liquibase formatted sql
+
+--changeset jesus:RA-012
+--context:dev,qa,prod
+--comment Crear DB y flujo para persistencia del registro de incidentes
+
+CREATE TABLE sge.incidents_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    -- información del servicio
+    service_name VARCHAR(100) NOT NULL,
+    environment VARCHAR(20), -- dev, qa, prod
+
+    -- endpoint y ejecución
+    endpoint VARCHAR(150),
+    method_name VARCHAR(150),
+    http_method VARCHAR(10),
+
+    -- trazabilidad distribuida
+    trace_id VARCHAR(100),
+    span_id VARCHAR(100),
+
+    -- usuario
+    user_id VARCHAR(50),
+
+    -- información del error
+    exception_type VARCHAR(150) NOT NULL,
+    message TEXT,
+    stack_trace TEXT,
+
+    -- clasificación del error
+    severity VARCHAR(20) COMMENT 'CRITICAL, ERROR, WARN, INFO',
+    error_code VARCHAR(50),
+
+    -- información del archivo si aplica
+    filename VARCHAR(255),
+    file_type VARCHAR(50),
+    folder_name VARCHAR(50),
+
+    -- estado del error para gestión
+    status VARCHAR(20) DEFAULT 'NEW' COMMENT 'NEW, IN_PROGRESS, SOLVED, DISCARDED',
+
+    -- datos adicionales flexibles
+    metadata JSON,
+
+    -- auditoría
+    created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(50),
+    updated_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(50)
+);
+
+-- índices recomendados
+CREATE INDEX idx_exception_service ON incidents_log(service_name);
+CREATE INDEX idx_exception_severity ON incidents_log(severity);
+CREATE INDEX idx_exception_type ON incidents_log(exception_type);
+CREATE INDEX idx_exception_created_on ON incidents_log(created_on);
+CREATE INDEX idx_exception_trace ON incidents_log(trace_id);
+CREATE INDEX idx_exception_filename ON incidents_log(filename);
+CREATE INDEX idx_exception_status ON incidents_log(status);
+
+--rollback DROP TABLE IF EXISTS sge.incidents_log;
+```
+
+**Casos de uso:**
+- ✅ Registrar excepciones no capturadas
+- ✅ Registrar warnings de procesamiento
+- ✅ Registrar errores de validación de archivos
+- ✅ Recibir datos de incidentes desde otros microservicios
+- ✅ Auditoría y análisis de problemas
+- ✅ Trazabilidad distribuida con trace_id/span_id
+
+**Queries útiles:**
+```sql
+-- Ver incidentes críticos sin resolver
+SELECT * FROM incidents_log 
+WHERE severity = 'CRITICAL' AND status = 'NEW'
+ORDER BY created_on DESC;
+
+-- Ver errores por servicio
+SELECT service_name, COUNT(*) as count, MAX(created_on) as last_error
+FROM incidents_log
+WHERE severity IN ('CRITICAL', 'ERROR')
+GROUP BY service_name
+ORDER BY count DESC;
+
+-- Ver incidentes de un archivo específico
+SELECT * FROM incidents_log
+WHERE filename LIKE '%archivo_esperado%'
+ORDER BY created_on DESC;
+```
+
+---
+
+
 
 **Archivo:** `009_RA-020_complex_migration.sql`
 

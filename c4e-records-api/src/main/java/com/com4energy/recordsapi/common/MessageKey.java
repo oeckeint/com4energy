@@ -11,6 +11,8 @@ public enum MessageKey {
 
     INVALID_EMAIL("validation.email.invalid"),
 
+    INCIDENT_LOG_NOT_FOUND("incident.log.not.found"),
+
     MEDIDA_NOT_FOUND("medidaqh.not.found"),
 
     NO_DATA_FOUND_CRITERIA("no.data.found.criteria"),
