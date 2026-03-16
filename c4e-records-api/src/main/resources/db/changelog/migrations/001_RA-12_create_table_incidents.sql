@@ -43,7 +43,7 @@ CREATE TABLE sge.incidents (
     -- ================================
     category VARCHAR(30) COMMENT 'APPLICATION, FILE_PROCESSING, INTEGRATION, VALIDATION, SECURITY, SYSTEM',
     severity VARCHAR(20) COMMENT 'CRITICAL, ERROR, WARN, INFO',
-    status VARCHAR(20) DEFAULT 'NEW' COMMENT 'NEW, IN_PROGRESS, SOLVED, DISCARDED',
+    status VARCHAR(20) NOT NULL DEFAULT 'NEW' COMMENT 'NEW, IN_PROGRESS, SOLVED, DISCARDED',
     error_code VARCHAR(50),
 
     -- ================================
