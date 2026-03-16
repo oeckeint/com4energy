@@ -20,11 +20,11 @@ import java.time.LocalDateTime;
 
 @Getter @Setter
 @Entity
-@Table(name = "incidents_log", schema = "sge")
+@Table(name = "incidents", schema = "sge")
 
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class IncidentLog {
+public class Incident {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

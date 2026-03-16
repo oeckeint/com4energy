@@ -4,7 +4,7 @@
 -- context:dev,qa,prod
 -- comment Crear DB y flujo para persistencia del registro de incidentes
 
-CREATE TABLE sge.incidents_log (
+CREATE TABLE sge.incidents (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
     -- ================================
@@ -71,15 +71,15 @@ CREATE TABLE sge.incidents_log (
 -- INDEXES
 -- ================================
 
-CREATE INDEX idx_incident_service ON incidents_log(service_name);
-CREATE INDEX idx_incident_category ON incidents_log(category);
-CREATE INDEX idx_incident_type ON incidents_log(exception_type);
-CREATE INDEX idx_incident_created_on ON incidents_log(created_on);
-CREATE INDEX idx_incident_trace ON incidents_log(trace_id);
-CREATE INDEX idx_incident_filename ON incidents_log(filename);
-CREATE INDEX idx_incident_service_created ON incidents_log(service_name, created_on);
+CREATE INDEX idx_incident_service ON incidents(service_name);
+CREATE INDEX idx_incident_category ON incidents(category);
+CREATE INDEX idx_incident_type ON incidents(exception_type);
+CREATE INDEX idx_incident_created_on ON incidents(created_on);
+CREATE INDEX idx_incident_trace ON incidents(trace_id);
+CREATE INDEX idx_incident_filename ON incidents(filename);
+CREATE INDEX idx_incident_service_created ON incidents(service_name, created_on);
 
 -- índice compuesto muy útil para monitoreo
-CREATE INDEX idx_incident_severity_status ON incidents_log(severity, status);
+CREATE INDEX idx_incident_severity_status ON incidents(severity, status);
 
--- rollback DROP TABLE IF EXISTS incidents_log;
+-- rollback DROP TABLE IF EXISTS incidents;
