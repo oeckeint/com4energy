@@ -1,9 +1,6 @@
 package com.com4energy.recordsapi.domain.entity;
 
-import com.com4energy.recordsapi.domain.enums.Environment;
-import com.com4energy.recordsapi.domain.enums.IncidentCategory;
-import com.com4energy.recordsapi.domain.enums.IncidentSeverity;
-import com.com4energy.recordsapi.domain.enums.IncidentStatus;
+import com.com4energy.incidents.shared.contract.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 
@@ -76,12 +73,16 @@ public class Incident {
     @Column(length = 20)
     private IncidentStatus status = IncidentStatus.NEW;
 
+    @Column(name = "error_code")
     private String errorCode;
 
+    @Column(name = "filename")
     private String filename;
 
+    @Column(name = "file_type")
     private String fileType;
 
+    @Column(name = "folder_name")
     private String folderName;
 
     @JdbcTypeCode(SqlTypes.JSON)

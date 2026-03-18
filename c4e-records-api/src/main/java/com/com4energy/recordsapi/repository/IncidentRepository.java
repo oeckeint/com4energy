@@ -1,8 +1,8 @@
 package com.com4energy.recordsapi.repository;
 
 import com.com4energy.recordsapi.domain.entity.Incident;
-import com.com4energy.recordsapi.domain.enums.IncidentSeverity;
-import com.com4energy.recordsapi.domain.enums.IncidentStatus;
+import com.com4energy.incidents.shared.contract.IncidentSeverity;
+import com.com4energy.incidents.shared.contract.IncidentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
