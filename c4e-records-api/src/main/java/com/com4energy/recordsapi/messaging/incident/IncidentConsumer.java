@@ -2,10 +2,11 @@ package com.com4energy.recordsapi.messaging.incident;
 
 import com.com4energy.recordsapi.common.MessageKey;
 import com.com4energy.recordsapi.common.Messages;
-import com.com4energy.recordsapi.domain.entity.Incident;
+import com.com4energy.recordsapi.domain.entity.messaging.Incident;
 import com.com4energy.recordsapi.mapper.IncidentEventMapper;
 import com.com4energy.recordsapi.repository.IncidentRepository;
-import com.com4energy.incidents.shared.contract.IncidentEvent;
+import com.com4energy.event.publisher.incident.config.IncidentPublisherProperties;
+import com.com4energy.event.publisher.incident.contract.IncidentEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
@@ -28,17 +29,17 @@ public class IncidentConsumer implements RabbitListenerConfigurer {
 
     private static final String LISTENER_ID_PREFIX = "incident-listener-";
 
-    private final IncidentRabbitProperties props;
+    private final IncidentPublisherProperties props;
     private final IncidentRepository incidentRepository;
     private final MessageConverter messageConverter;
     private final IncidentEventMapper mapper;
 
     @Override
-    public void configureRabbitListeners(RabbitListenerEndpointRegistrar registrar) {
+    public void configureRabbitListeners(RabbitListenerEndpointRegistrar register) {
         props.getTypes().forEach((typeKey, config) -> {
             SimpleRabbitListenerEndpoint endpoint = new SimpleRabbitListenerEndpoint();
             endpoint.setId(LISTENER_ID_PREFIX + typeKey);
-            endpoint.setQueueNames(config.getQueue());
+            endpoint.setQueueNames(config.queue());
             endpoint.setMessageListener(message -> {
                 IncidentEvent event = (IncidentEvent) messageConverter.fromMessage(message);
                 Incident incident = mapper.toIncident(event);
@@ -46,7 +47,7 @@ public class IncidentConsumer implements RabbitListenerConfigurer {
                 log.info(Messages.format(MessageKey.INCIDENT_SAVED, typeKey, incident.getId()));
             });
 
-            registrar.registerEndpoint(endpoint);
+            register.registerEndpoint(endpoint);
         });
     }
 }

@@ -8,7 +8,7 @@ import com.com4energy.recordsapi.controller.common.ResponseHelper;
 import com.com4energy.recordsapi.controller.common.dto.PageResponse;
 import com.com4energy.recordsapi.controller.medidas.DateRangeHelper;
 import com.com4energy.recordsapi.controller.medidas.MedidasConstants;
-import com.com4energy.recordsapi.dto.MedidaQH;
+import com.com4energy.recordsapi.domain.entity.medidas.MedidaQH;
 import com.com4energy.recordsapi.exception.ResourceNotFoundException;
 import com.com4energy.recordsapi.service.MedidaQHService;
 import org.springframework.data.domain.Page;

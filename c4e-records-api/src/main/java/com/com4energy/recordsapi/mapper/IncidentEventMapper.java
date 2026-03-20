@@ -1,8 +1,8 @@
 package com.com4energy.recordsapi.mapper;
 
-import com.com4energy.recordsapi.domain.entity.Incident;
-import com.com4energy.incidents.shared.contract.IncidentStatus;
-import com.com4energy.incidents.shared.contract.IncidentEvent;
+import com.com4energy.recordsapi.domain.entity.messaging.Incident;
+import com.com4energy.event.publisher.incident.contract.IncidentStatus;
+import com.com4energy.event.publisher.incident.contract.IncidentEvent;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

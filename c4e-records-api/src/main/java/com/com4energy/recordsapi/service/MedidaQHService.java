@@ -1,6 +1,6 @@
 package com.com4energy.recordsapi.service;
 
-import com.com4energy.recordsapi.dto.MedidaQH;
+import com.com4energy.recordsapi.domain.entity.medidas.MedidaQH;
 
 import com.com4energy.recordsapi.repository.MedidaQHRepository;
 

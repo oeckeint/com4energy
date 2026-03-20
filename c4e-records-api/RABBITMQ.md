@@ -297,15 +297,15 @@ c4e:
 ```
 
 ```java
-// Con c4e-incidents-shared: inyectar IncidentPublisher y publicar por tipo
+// Con c4e-event-publisher: inyectar EventPublisher y publicar por tipo
 @Service
 @RequiredArgsConstructor
 public class ExternalIncidentService {
 
-    private final IncidentPublisher incidentPublisher;
+    private final EventPublisher eventPublisher;
 
     public void report(IncidentEvent event) {
-        incidentPublisher.publish(IncidentType.INTEGRATION, event);
+        eventPublisher.send(IncidentType.INTEGRATION, event);
     }
 }
 ```
@@ -323,11 +323,11 @@ Pero para integracion entre microservicios, usar el JAR completo de `records-api
 - aumenta acoplamiento entre servicios,
 - complica upgrades y compatibilidad.
 
-**Recomendacion adoptada:** usar un unico artefacto compartido llamado `c4e-incidents-shared`.
+**Recomendacion adoptada:** usar un unico artefacto compartido llamado `c4e-event-publisher`.
 
 Contenido del artefacto:
 - contrato AMQP (`IncidentEvent` + enums),
-- publisher comun (`IncidentPublisher`),
+- publisher comun (`EventPublisher`),
 - auto-configuracion Spring Boot para publicar con `RabbitTemplate`.
 
 Coordenadas Maven propuestas:
@@ -335,7 +335,7 @@ Coordenadas Maven propuestas:
 ```xml
 <dependency>
   <groupId>com.com4energy</groupId>
-  <artifactId>c4e-incidents-shared</artifactId>
+  <artifactId>c4e-event-publisher</artifactId>
   <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```

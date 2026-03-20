@@ -1,6 +1,6 @@
 package com.com4energy.recordsapi.repository;
 
-import com.com4energy.recordsapi.dto.MedidaQH;
+import com.com4energy.recordsapi.domain.entity.medidas.MedidaQH;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

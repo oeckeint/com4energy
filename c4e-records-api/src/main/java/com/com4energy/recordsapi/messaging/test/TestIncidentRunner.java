@@ -1,7 +1,12 @@
 package com.com4energy.recordsapi.messaging.test;
 
-import com.com4energy.incidents.shared.contract.*;
-import com.com4energy.recordsapi.messaging.incident.IncidentProducer;
+import com.com4energy.event.publisher.core.Environment;
+import com.com4energy.event.publisher.incident.contract.IncidentCategory;
+import com.com4energy.event.publisher.incident.contract.IncidentEvent;
+import com.com4energy.event.publisher.incident.contract.IncidentSeverity;
+import com.com4energy.event.publisher.incident.contract.IncidentStatus;
+import com.com4energy.event.publisher.incident.contract.IncidentType;
+import com.com4energy.event.publisher.core.Publisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -13,7 +18,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TestIncidentRunner implements CommandLineRunner {
 
-    private final IncidentProducer producer;
+    private final Publisher incidentPublisher;
 
     @Override
     public void run(String... args) {
@@ -44,7 +49,7 @@ public class TestIncidentRunner implements CommandLineRunner {
                 null                           // timestamp (se genera automaticamente)
         );
 
-        producer.send(IncidentType.SYSTEM, testEvent);
+        incidentPublisher.send(IncidentType.SYSTEM, testEvent);
         System.out.println("Evento de prueba enviado!");
     }
 }

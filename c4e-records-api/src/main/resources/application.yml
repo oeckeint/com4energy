@@ -21,10 +21,11 @@ server:
   port: 8082
 
 # ==============================
-# RabbitMQ – todos los ambientes usan la misma configuración
+# RabbitMQ – Configuración de incidentes (consumer + publisher)
 # ==============================
-rabbitmq:
+c4e:
   incidents:
+    enabled: true
     types:
       validation: # errores de contenido, reglas de negocio
         queue: incident.validation.queue

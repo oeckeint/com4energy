@@ -2,9 +2,9 @@ package com.com4energy.recordsapi.service;
 
 import com.com4energy.recordsapi.common.MessageKey;
 import com.com4energy.recordsapi.common.Messages;
-import com.com4energy.recordsapi.domain.entity.Incident;
-import com.com4energy.incidents.shared.contract.IncidentSeverity;
-import com.com4energy.incidents.shared.contract.IncidentStatus;
+import com.com4energy.recordsapi.domain.entity.messaging.Incident;
+import com.com4energy.event.publisher.incident.contract.IncidentSeverity;
+import com.com4energy.event.publisher.incident.contract.IncidentStatus;
 import com.com4energy.recordsapi.exception.ResourceNotFoundException;
 import com.com4energy.recordsapi.repository.IncidentRepository;
 import lombok.RequiredArgsConstructor;
