@@ -8,6 +8,7 @@ import com.com4energy.event.publisher.incident.contract.IncidentStatus;
 import com.com4energy.event.publisher.incident.contract.IncidentType;
 import com.com4energy.event.publisher.core.Publisher;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TestIncidentRunner implements CommandLineRunner {
 
+    @Qualifier("incidentPublisher")
     private final Publisher incidentPublisher;
 
     @Override
@@ -42,7 +44,7 @@ public class TestIncidentRunner implements CommandLineRunner {
                 "input.csv",                  // filename
                 "CSV",                        // fileType
                 "incoming",                   // folderName
-                "{\"seed\":true,\"fileSize\":\"2MB\"}", // payload metadata complementaria
+                "{\"seed\":true,\"fileSize\":\"2MB\"}", // metadata complementaria
                 "runner",                     // createdBy
                 LocalDateTime.now(),           // updatedOn
                 "runner",                     // updatedBy

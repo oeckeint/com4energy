@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * Convierte un {@link IncidentEvent} recibido por RabbitMQ en una entidad {@link Incident}
  * lista para ser persistida.
  *
- * <p>El campo {@code payload} se parsea como {@link JsonNode}; si no es JSON valido
+ * <p>El campo {@code metadata} se parsea como {@link JsonNode}; si no es JSON valido
  * se almacena como nodo de texto para no perder la informacion.</p>
  */
 @Slf4j
@@ -24,7 +24,7 @@ public class IncidentEventMapper {
     private final ObjectMapper objectMapper;
 
     public Incident toIncident(IncidentEvent event) {
-        JsonNode metadata = parsePayload(event.payload());
+        JsonNode metadata = parsePayload(event.metadata());
 
         return Incident.builder()
                 .serviceName(event.serviceName())
