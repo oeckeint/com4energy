@@ -1,7 +1,7 @@
 package com.com4energy.recordsapi.controller.common;
 
-import com.com4energy.recordsapi.common.MessageKey;
-import com.com4energy.recordsapi.common.Messages;
+import com.com4energy.i18n.core.Messages;
+import com.com4energy.i18n.core.MessageKey;
 import com.com4energy.recordsapi.controller.common.dto.PageResponse;
 import com.com4energy.recordsapi.controller.common.mapper.PageMapper;
 import org.springframework.data.domain.Page;
@@ -12,6 +12,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import com.com4energy.recordsapi.common.RecordsApiCommonMessageKey;
+
 /**
  * Helper class for building consistent HTTP responses across all API endpoints.
  * Handles empty collections with informative headers.
@@ -19,7 +21,7 @@ import java.util.Optional;
 public final class ResponseHelper {
 
     private ResponseHelper() {
-        throw new IllegalStateException(Messages.get(MessageKey.UTILITY_CLASS));
+        throw new IllegalStateException(Messages.get(RecordsApiCommonMessageKey.UTILITY_CLASS));
     }
 
     /**
@@ -31,7 +33,7 @@ public final class ResponseHelper {
     public static <T> ResponseEntity<Page<T>> ok(Page<T> page) {
         if (page.isEmpty()) {
             return ResponseEntity.ok()
-                .header(Messages.get(MessageKey.HEADER_INFO), Messages.get(MessageKey.NO_DATA_FOUND_CRITERIA))
+                .header(Messages.get(RecordsApiCommonMessageKey.HEADER_INFO), Messages.get(RecordsApiCommonMessageKey.NO_DATA_FOUND_CRITERIA))
                 .body(page);
         }
         return ResponseEntity.ok(page);
@@ -46,7 +48,7 @@ public final class ResponseHelper {
     public static <T> ResponseEntity<List<T>> ok(List<T> list) {
         if (list.isEmpty()) {
             return ResponseEntity.ok()
-                .header(Messages.get(MessageKey.HEADER_INFO), Messages.get(MessageKey.NO_DATA_FOUND_CRITERIA))
+                .header(Messages.get(RecordsApiCommonMessageKey.HEADER_INFO), Messages.get(RecordsApiCommonMessageKey.NO_DATA_FOUND_CRITERIA))
                 .body(list);
         }
         return ResponseEntity.ok(list);
@@ -62,7 +64,7 @@ public final class ResponseHelper {
     public static <T, C extends Collection<T>> ResponseEntity<C> ok(C collection) {
         if (collection.isEmpty()) {
             return ResponseEntity.ok()
-                .header(Messages.get(MessageKey.HEADER_INFO), Messages.get(MessageKey.NO_DATA_FOUND_CRITERIA))
+                .header(Messages.get(RecordsApiCommonMessageKey.HEADER_INFO), Messages.get(RecordsApiCommonMessageKey.NO_DATA_FOUND_CRITERIA))
                 .body(collection);
         }
         return ResponseEntity.ok(collection);
@@ -105,7 +107,7 @@ public final class ResponseHelper {
      */
     public static <T> ResponseEntity<T> okWithMessage(T data, MessageKey messageKey) {
         return ResponseEntity.ok()
-            .header(Messages.get(MessageKey.HEADER_INFO), Messages.get(messageKey))
+            .header(Messages.get(RecordsApiCommonMessageKey.HEADER_INFO), Messages.get(messageKey))
             .body(data);
     }
 
@@ -119,7 +121,7 @@ public final class ResponseHelper {
      */
     public static <T, C extends Collection<T>> ResponseEntity<C> okWithAlwaysMessage(C collection, MessageKey messageKey) {
         return ResponseEntity.ok()
-            .header(Messages.get(MessageKey.HEADER_INFO), Messages.get(messageKey))
+            .header(Messages.get(RecordsApiCommonMessageKey.HEADER_INFO), Messages.get(messageKey))
             .body(collection);
     }
 
@@ -130,8 +132,8 @@ public final class ResponseHelper {
         if (page.isEmpty()) {
             return ResponseEntity.ok()
                     .header(
-                            Messages.get(MessageKey.HEADER_INFO),
-                            Messages.get(MessageKey.NO_DATA_FOUND_CRITERIA)
+                            Messages.get(RecordsApiCommonMessageKey.HEADER_INFO),
+                            Messages.get(RecordsApiCommonMessageKey.NO_DATA_FOUND_CRITERIA)
                     )
                     .body(response);
         }

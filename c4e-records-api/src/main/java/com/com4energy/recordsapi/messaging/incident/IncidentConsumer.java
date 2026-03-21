@@ -1,7 +1,7 @@
 package com.com4energy.recordsapi.messaging.incident;
 
-import com.com4energy.recordsapi.common.MessageKey;
-import com.com4energy.recordsapi.common.Messages;
+import com.com4energy.recordsapi.common.RecordsApiCommonMessageKey;
+import com.com4energy.i18n.core.Messages;
 import com.com4energy.recordsapi.domain.entity.messaging.Incident;
 import com.com4energy.recordsapi.mapper.IncidentEventMapper;
 import com.com4energy.recordsapi.repository.IncidentRepository;
@@ -44,7 +44,7 @@ public class IncidentConsumer implements RabbitListenerConfigurer {
                 IncidentEvent event = (IncidentEvent) messageConverter.fromMessage(message);
                 Incident incident = mapper.toIncident(event);
                 incidentRepository.save(incident);
-                log.info(Messages.format(MessageKey.INCIDENT_SAVED, typeKey, incident.getId()));
+                log.info(Messages.format(RecordsApiCommonMessageKey.INCIDENT_SAVED, typeKey, incident.getId()));
             });
 
             register.registerEndpoint(endpoint);

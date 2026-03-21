@@ -1,7 +1,7 @@
 package com.com4energy.recordsapi.service;
 
-import com.com4energy.recordsapi.common.MessageKey;
-import com.com4energy.recordsapi.common.Messages;
+import com.com4energy.recordsapi.common.RecordsApiCommonMessageKey;
+import com.com4energy.i18n.core.Messages;
 import com.com4energy.recordsapi.domain.entity.messaging.Incident;
 import com.com4energy.event.publisher.incident.contract.IncidentSeverity;
 import com.com4energy.event.publisher.incident.contract.IncidentStatus;
@@ -47,7 +47,7 @@ public class IncidentService {
 
     public Incident updateIncidentStatus(Long id, IncidentStatus status) {
         Incident incident = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(Messages.format(MessageKey.INCIDENT_LOG_NOT_FOUND, id)));
+                .orElseThrow(() -> new ResourceNotFoundException(Messages.format(RecordsApiCommonMessageKey.INCIDENT_LOG_NOT_FOUND, id)));
 
         incident.setStatus(status);
 

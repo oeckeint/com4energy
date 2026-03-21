@@ -3,6 +3,9 @@ package com.com4energy.recordsapi.mapper;
 import com.com4energy.recordsapi.domain.entity.messaging.Incident;
 import com.com4energy.event.publisher.incident.contract.IncidentStatus;
 import com.com4energy.event.publisher.incident.contract.IncidentEvent;
+import com.com4energy.i18n.core.Messages;
+import com.com4energy.recordsapi.common.RecordsApiCommonMessageKey;
+import com.com4energy.recordsapi.common.StringRules;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -54,13 +57,13 @@ public class IncidentEventMapper {
 
 
     private JsonNode parsePayload(String payload) {
-        if (payload == null || payload.isBlank()) {
+        if (StringRules.isBlank(payload)) {
             return null;
         }
         try {
             return objectMapper.readTree(payload);
         } catch (Exception e) {
-            log.warn("Payload is not valid JSON, storing as plain text: {}", e.getMessage());
+            log.warn(Messages.format(RecordsApiCommonMessageKey.INCIDENT_PAYLOAD_JSON_PARSE_ERROR, e.getMessage()));
             return objectMapper.getNodeFactory().textNode(payload);
         }
     }

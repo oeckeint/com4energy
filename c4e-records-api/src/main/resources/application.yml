@@ -21,6 +21,12 @@ server:
   port: 8082
 
 # ==============================
+# CORS
+# ==============================
+cors:
+  allowed-origins: http://localhost:4200
+
+# ==============================
 # RabbitMQ – Configuración de incidentes (consumer + publisher)
 # ==============================
 c4e:

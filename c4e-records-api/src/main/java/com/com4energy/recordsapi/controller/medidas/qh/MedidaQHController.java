@@ -1,8 +1,8 @@
 package com.com4energy.recordsapi.controller.medidas.qh;
 
-import com.com4energy.recordsapi.common.CoreConstants;
-import com.com4energy.recordsapi.common.MessageKey;
-import com.com4energy.recordsapi.common.Messages;
+import com.com4energy.recordsapi.common.Constants;
+import com.com4energy.recordsapi.common.RecordsApiCommonMessageKey;
+import com.com4energy.i18n.core.Messages;
 import com.com4energy.recordsapi.controller.common.ApiConstants;
 import com.com4energy.recordsapi.controller.common.ResponseHelper;
 import com.com4energy.recordsapi.controller.common.dto.PageResponse;
@@ -21,6 +21,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
 import java.net.URI;
 
 @RestController
@@ -32,12 +34,12 @@ public class MedidaQHController {
 
     @GetMapping
     public ResponseEntity<PageResponse<MedidaQH>> getAll(
-            @RequestParam(name = CoreConstants.ID_CLIENTE, required = false) Integer idCliente,
+            @RequestParam(name = Constants.ID_CLIENTE, required = false) Integer idCliente,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @PageableDefault(
                     size = ApiConstants.DEFAULT_PAGE_SIZE,
-                    sort = CoreConstants.FECHA,
+                    sort = Constants.FECHA,
                     direction = Sort.Direction.ASC) Pageable pageable) {
 
         LocalDateTime start = DateRangeHelper.parseDate(startDate, false);
@@ -50,10 +52,10 @@ public class MedidaQHController {
 
     @GetMapping(MedidaQHConstants.LAST_24H_PATH)
     public ResponseEntity<PageResponse<MedidaQH>> last24Hours(
-            @RequestParam(name = CoreConstants.ID_CLIENTE, required = false) Integer idCliente,
+            @RequestParam(name = Constants.ID_CLIENTE, required = false) Integer idCliente,
             @PageableDefault(
                     size = ApiConstants.DEFAULT_PAGE_SIZE,
-                    sort = CoreConstants.FECHA,
+                    sort = Constants.FECHA,
                     direction = Sort.Direction.ASC
             ) Pageable pageable) {
 
@@ -68,7 +70,7 @@ public class MedidaQHController {
 
         MedidaQH medida = medidaQHService.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        Messages.format(MessageKey.MEDIDA_NOT_FOUND, id)
+                        Messages.format(RecordsApiCommonMessageKey.MEDIDA_NOT_FOUND, id)
                 ));
 
         return ResponseHelper.ok(medida);
@@ -77,7 +79,12 @@ public class MedidaQHController {
     @PostMapping
     public ResponseEntity<MedidaQH> save(@Validated @RequestBody MedidaQH medidaQH) {
         MedidaQH saved = medidaQHService.save(medidaQH);
-        URI location = URI.create(MedidaQHConstants.BASE_PATH + "/" + saved.getIdMedidaQH());
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path(ApiConstants.ID_PATH)
+                .buildAndExpand(saved.getIdMedidaQH())
+                .toUri();
+        // Safe: response serialized as JSON, no HTML rendering
         return ResponseHelper.created(location, saved);
     }
 

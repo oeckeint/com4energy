@@ -1,6 +1,6 @@
 package com.com4energy.recordsapi.messaging.test;
 
-import com.com4energy.event.publisher.core.Environment;
+import com.com4energy.event.publisher.common.Environment;
 import com.com4energy.event.publisher.incident.contract.IncidentCategory;
 import com.com4energy.event.publisher.incident.contract.IncidentEvent;
 import com.com4energy.event.publisher.incident.contract.IncidentSeverity;

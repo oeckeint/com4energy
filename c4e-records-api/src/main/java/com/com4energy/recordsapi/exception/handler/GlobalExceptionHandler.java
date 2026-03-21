@@ -1,7 +1,8 @@
 package com.com4energy.recordsapi.exception.handler;
 
-import com.com4energy.recordsapi.common.MessageKey;
-import com.com4energy.recordsapi.common.Messages;
+import com.com4energy.event.publisher.exception.PublisherException;
+import com.com4energy.recordsapi.common.RecordsApiCommonMessageKey;
+import com.com4energy.i18n.core.Messages;
 import com.com4energy.recordsapi.controller.common.ApiConstants;
 import com.com4energy.recordsapi.exception.BusinessException;
 import com.com4energy.recordsapi.exception.ResourceNotFoundException;
@@ -53,7 +54,7 @@ public class GlobalExceptionHandler {
         Throwable root = getRootCause(ex);
         String message = root instanceof IllegalArgumentException && root.getMessage() != null
                 ? root.getMessage()
-                : Messages.get(MessageKey.ERROR_UNEXPECTED_NO_PARAM);
+                : Messages.get(RecordsApiCommonMessageKey.ERROR_UNEXPECTED_NO_PARAM);
 
         ApiError error = new ApiError(
                 ApiConstants.HTTP_BAD_REQUEST,
@@ -63,12 +64,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ApiConstants.HTTP_BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(PublisherException.class)
+    public ResponseEntity<ApiError> handlePublisher(PublisherException ex) {
+
+        ApiError error = new ApiError(
+                ApiConstants.HTTP_INTERNAL_SERVER_ERROR,
+                ex.getMessage()
+        );
+
+        return ResponseEntity.status(ApiConstants.HTTP_INTERNAL_SERVER_ERROR).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex) {
 
         ApiError error = new ApiError(
                 ApiConstants.HTTP_INTERNAL_SERVER_ERROR,
-                Messages.get(MessageKey.ERROR_UNEXPECTED_NO_PARAM)
+                Messages.get(RecordsApiCommonMessageKey.ERROR_UNEXPECTED_NO_PARAM)
         );
 
         return ResponseEntity.status(ApiConstants.HTTP_INTERNAL_SERVER_ERROR).body(error);

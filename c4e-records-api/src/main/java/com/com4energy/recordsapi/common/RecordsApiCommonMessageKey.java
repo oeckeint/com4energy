@@ -1,6 +1,8 @@
 package com.com4energy.recordsapi.common;
 
-public enum MessageKey {
+import com.com4energy.i18n.core.MessageKey;
+
+public enum RecordsApiCommonMessageKey implements MessageKey {
 
     // ---------------------------
     // GENERAL / SYSTEM MESSAGES
@@ -34,7 +36,7 @@ public enum MessageKey {
     INCIDENT_EVENT_PAYLOAD_TOO_LARGE("incident.event.payload.too.large"),
     INCIDENT_SAVED("incident.saved"),
     INCIDENT_LOG_NOT_FOUND("incident.log.not.found"),
-    INCIDENT_TYPE_NOT_CONFIGURED("incident.type.not.configured"),
+    INCIDENT_PAYLOAD_JSON_PARSE_ERROR("incident.payload.json.parse.error"),
 
     // ---------------------------
     // MEDIDAQH / BUSINESS DOMAIN MESSAGES
@@ -44,10 +46,11 @@ public enum MessageKey {
 
     private final String key;
 
-    MessageKey(String key) {
+    RecordsApiCommonMessageKey(String key) {
         this.key = key;
     }
 
+    @Override
     public String key() {
         return key;
     }

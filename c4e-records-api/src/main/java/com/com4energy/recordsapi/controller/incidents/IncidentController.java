@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/incidents")
+@RequestMapping(IncidentConstants.BASE_PATH)
 @RequiredArgsConstructor
 public class IncidentController {
 
@@ -23,32 +23,32 @@ public class IncidentController {
         return service.registerNewIncident(incident);
     }
 
-    @GetMapping("/open")
+    @GetMapping(IncidentConstants.OPEN_PATH)
     public List<Incident> getOpenIncidents() {
         return service.getOpenIncidents();
     }
 
-    @GetMapping("/recent")
+    @GetMapping(IncidentConstants.RECENT_PATH)
     public List<Incident> getRecentIncidents() {
         return service.getRecentIncidents();
     }
 
-    @GetMapping("/service/{serviceName}")
+    @GetMapping(IncidentConstants.BY_SERVICE_PATH)
     public List<Incident> getByService(@PathVariable String serviceName) {
         return service.getIncidentsByService(serviceName);
     }
 
-    @GetMapping("/trace/{traceId}")
+    @GetMapping(IncidentConstants.BY_TRACE_PATH)
     public List<Incident> getByTrace(@PathVariable String traceId) {
         return service.getIncidentsByTraceId(traceId);
     }
 
-    @GetMapping("/severity/{severity}")
+    @GetMapping(IncidentConstants.BY_SEVERITY_PATH)
     public Page<Incident> getBySeverity(@PathVariable IncidentSeverity severity, Pageable pageable) {
         return service.getIncidentsBySeverity(severity, pageable);
     }
 
-    @PatchMapping("/{id}/status")
+    @PatchMapping(IncidentConstants.UPDATE_STATUS_PATH)
     public Incident updateStatus(@PathVariable Long id, @RequestParam IncidentStatus status) {
         return service.updateIncidentStatus(id, status);
     }
