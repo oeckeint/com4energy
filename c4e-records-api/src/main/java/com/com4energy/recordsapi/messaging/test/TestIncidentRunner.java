@@ -7,6 +7,7 @@ import com.com4energy.event.publisher.incident.contract.IncidentSeverity;
 import com.com4energy.event.publisher.incident.contract.IncidentStatus;
 import com.com4energy.event.publisher.incident.contract.IncidentType;
 import com.com4energy.event.publisher.core.Publisher;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class TestIncidentRunner implements CommandLineRunner {
 
@@ -51,7 +53,12 @@ public class TestIncidentRunner implements CommandLineRunner {
                 null                           // timestamp (se genera automaticamente)
         );
 
-        incidentPublisher.send(IncidentType.SYSTEM, testEvent);
-        System.out.println("Evento de prueba enviado!");
+        try {
+            incidentPublisher.send(IncidentType.SYSTEM, testEvent);
+            log.info("Evento de prueba enviado");
+        } catch (RuntimeException ex) {
+            // No bloquea el startup si RabbitMQ aun no esta disponible.
+            log.warn("No se pudo enviar el evento de prueba al iniciar: {}", ex.getMessage());
+        }
     }
 }

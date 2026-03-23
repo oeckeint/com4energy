@@ -4,6 +4,11 @@
 spring:
   profiles:
     active: dev
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${DB_URL_SGE}
@@ -64,7 +69,8 @@ spring:
     show-sql: true
 logging:
   level:
-    liquibase: DEBUG
+    liquibase: WARN
+    liquibase.servicelocator: WARN
 
 # ==============================
 # Perfil QA
@@ -79,7 +85,8 @@ spring:
 
 logging:
   level:
-    liquibase: DEBUG
+    liquibase: WARN
+    liquibase.servicelocator: WARN
 
 # ==============================
 # Perfil PROD
@@ -95,3 +102,4 @@ spring:
 logging:
   level:
     liquibase: WARN
+    liquibase.servicelocator: WARN
