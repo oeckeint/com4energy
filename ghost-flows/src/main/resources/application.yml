@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: jobs
+  quartz:
+    auto-startup: true
+    job-store-type: memory
+
+mysql:
+  host: ${DB_HOST}
+  database: ${SGE_LOCAL_DB_NAME}
+  username: ${DB_USER_SGE}
+  backup:
+    path: /app/database/backups
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+mysql:
+  backup:
+    path: ${DATABASE_BACKUP_PATH}

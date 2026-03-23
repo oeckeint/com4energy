@@ -19,7 +19,6 @@ public class BackupDatabaseJob implements Job {
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
-        log.info("Backup started...");
         databaseService.backup();
     }
 }

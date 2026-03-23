@@ -1,0 +1,14 @@
+# Build outputs
+/target/
+
+# IDE metadata
+/.idea/
+
+# Local environment
+/.env
+
+# IntelliJ module file
+/ghost-flows.iml
+
+
+

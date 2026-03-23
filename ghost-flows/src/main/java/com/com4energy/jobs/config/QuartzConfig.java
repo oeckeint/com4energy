@@ -21,9 +21,8 @@ public class QuartzConfig {
         return TriggerBuilder.newTrigger()
                 .forJob(jobDetail)
                 .withIdentity("databaseBackupTrigger")
-                .withSchedule(CronScheduleBuilder.cronSchedule("0 0 0 * * ?")) // Ejecutar cada día a las 2 AM
+                .withSchedule(CronScheduleBuilder.cronSchedule("0 0 0 * * ?"))
                 .build();
     }
-
 
 }
