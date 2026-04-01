@@ -1,0 +1,105 @@
+# ==============================
+# Configuración base
+# ==============================
+spring:
+  profiles:
+    active: dev
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL_SGE}
+    username: ${DB_USER_SGE}
+    password: ${DB_PASSWORD_SGE}
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: validate
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+server:
+  port: 8082
+
+# ==============================
+# CORS
+# ==============================
+cors:
+  allowed-origins: http://localhost:4200
+
+# ==============================
+# RabbitMQ – Configuración de incidentes (consumer + publisher)
+# ==============================
+c4e:
+  incidents:
+    enabled: true
+    types:
+      validation: # errores de contenido, reglas de negocio
+        queue: incident.validation.queue
+        exchange: incident.validation.exchange
+        routingKey: incident.validation.key
+        deadLetterExchange: incident.validation.exchange.dlx
+        deadLetterQueue: incident.validation.queue.dlq
+      integration: # errores al interactuar con otros sistemas / APIs externas
+        queue: incident.integration.queue
+        exchange: incident.integration.exchange
+        routingKey: incident.integration.key
+        deadLetterExchange: incident.integration.exchange.dlx
+        deadLetterQueue: incident.integration.queue.dlq
+      system: # cada error inesperado o runtime
+        queue: incident.system.queue
+        exchange: incident.system.exchange
+        routingKey: incident.system.key
+        deadLetterExchange: incident.system.exchange.dlx
+        deadLetterQueue: incident.system.queue.dlq
+
+# ==============================
+# Perfil DEV
+# ==============================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    show-sql: false
+logging:
+  level:
+    liquibase: WARN
+    liquibase.servicelocator: WARN
+
+# ==============================
+# Perfil QA
+# ==============================
+---
+spring:
+  config:
+    activate:
+      on-profile: qa
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    liquibase: WARN
+    liquibase.servicelocator: WARN
+
+# ==============================
+# Perfil PROD
+# ==============================
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    liquibase: WARN
+    liquibase.servicelocator: WARN

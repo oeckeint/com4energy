@@ -1,15 +1,13 @@
-package com.com4energy.recordsapi.dto;
+package com.com4energy.recordsapi.domain.entity.medidas;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "medidaqh")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class MedidaQH {

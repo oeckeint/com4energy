@@ -18,10 +18,11 @@
 - [Estructura del Proyecto](#-estructura-del-proyecto)
 - [Instalación y Configuración](#-instalación-y-configuración)
 - [Uso de la API](#-uso-de-la-api)
+- [Mensajeria RabbitMQ](#-mensajeria-rabbitmq)
 - [Programación Orientada a Aspectos (AOP)](#-programación-orientada-a-aspectos-aop)
 - [Gestión de Migraciones con Liquibase](#-gestión-de-migraciones-con-liquibase)
 - [Roadmap](#-roadmap)
-- [Arquitectura Futura](#-arquitectura-futura)
+- [Arquitectura Asincrona (Actual y Evolucion)](#-arquitectura-asincrona-actual-y-evolucion)
 - [Consideraciones de Performance](#-consideraciones-de-performance)
 - [Documentación Adicional](#-documentación-adicional)
 - [Contribución](#-contribución)
@@ -58,7 +59,7 @@
          │               │               │
     ┌────▼────┐    ┌─────▼─────┐   ┌────▼────┐
     │ MySQL   │    │ RabbitMQ  │   │  Cache  │
-    │   DB    │    │  (Futuro) │   │ (Redis) │
+    │   DB    │    │ (Incidentes + DLQ) │   │ (Redis) │
     └─────────┘    └───────────┘   └─────────┘
 ```
 
@@ -131,6 +132,12 @@ Controllers ──────┼─→ ValidationAspect (Validaciones)
 - Reproducibilidad en todos los ambientes
 - Rollback y reversibilidad de cambios
 
+✅ **Mensajeria RabbitMQ para Incidentes (Topologia Base)**
+- Configuracion por tipo de incidente (`validation`, `integration`, `system`)
+- Declaracion de queue, exchange, binding, DLX y DLQ por tipo
+- Nombres externalizados en `application.yml` (`rabbitmq.incidents.types`)
+- Base lista para implementar publicadores/consumidores de negocio
+
 ✅ **Manejo de Errores**
 - Gestión global de excepciones
 - Respuestas de error estandarizadas
@@ -159,6 +166,7 @@ Controllers ──────┼─→ ValidationAspect (Validaciones)
 - **Spring Boot 3.5.4** - Framework principal
 - **Spring Data JPA** - Persistencia de datos
 - **Spring AOP** - Programación orientada a aspectos
+- **Spring AMQP / RabbitMQ** - Mensajeria de incidentes y topologia DLQ
 - **Spring Boot Actuator** - Monitoreo y métricas
 - **Liquibase** - Gestión de migraciones de BD
 
@@ -173,7 +181,6 @@ Controllers ──────┼─→ ValidationAspect (Validaciones)
 - **Liquibase CLI** - Herramientas de línea de comandos (opcional)
 
 ### Futuras
-- **RabbitMQ** - Mensajería asíncrona (En roadmap)
 - **Redis** - Caché distribuido (En roadmap)
 - **Spring Cloud** - Microservicios avanzados (En evaluación)
 
@@ -200,6 +207,14 @@ c4e-records-api/
 │       │   │   └── Messages.java
 │       │   ├── config/                            # Configuración
 │       │   │   └── CorsConfig.java
+│       │   ├── messaging/                         # Mensajeria RabbitMQ
+│       │   │   ├── config/
+│       │   │   │   └── RabbitMQIncidentsConfig.java
+│       │   │   └── incident/
+│       │   │       ├── IncidentRabbitProperties.java
+│       │   │       ├── IncidentProducer.java
+│       │   │       ├── IncidentConsumer.java
+│       │   │       └── IncidentEvent.java
 │       │   ├── controller/                        # Controladores REST
 │       │   │   ├── cliente/
 │       │   │   ├── common/                        # DTOs y mappers comunes
@@ -220,7 +235,7 @@ c4e-records-api/
 │       │   └── service/                           # Lógica de negocio
 │       │       └── MedidaQHService.java
 │       └── resources/
-│           ├── application.properties             # Configuración principal
+│           ├── application.yml                    # Configuracion principal
 │           └── messages.properties                # Mensajes i18n
 ├── docker-compose.yml                             # Orquestación Docker
 ├── Dockerfile                                     # Imagen Docker
@@ -463,6 +478,20 @@ curl -X POST "http://localhost:8082/medidaqh" \
 
 ---
 
+## 📨 Mensajeria RabbitMQ
+
+Estado actual:
+- Topologia de incidentes configurada por tipo (`validation`, `integration`, `system`).
+- Colas principales con DLX/DLQ declaradas via `RabbitMQIncidentsConfig`.
+- Configuracion centralizada en `application.yml` con `@ConfigurationProperties`.
+
+Documentacion completa:
+- Ver `RABBITMQ.md` para topologia detallada, runbook de DLQ y KPIs operativos.
+- Alta de nuevos tipos/topics: `RABBITMQ.md#como-agregar-un-nuevo-tipotopic-de-incidente`.
+- Checklist de PR: `RABBITMQ.md#checklist-de-pr-para-nuevos-topicstipos`.
+
+---
+
 ## 🎯 Programación Orientada a Aspectos (AOP)
 
 Este proyecto utiliza **Spring AOP** para implementar funcionalidades transversales de manera centralizada y reutilizable.
@@ -672,12 +701,12 @@ Ver `LIQUIBASE.md` para:
 - [ ] Búsqueda avanzada con múltiples filtros
 - [ ] Exportación de datos (CSV, Excel)
 
-### 📋 Fase 3: Mensajería Asíncrona (Planificado)
-- [ ] Integración con RabbitMQ
-- [ ] Cola de procesamiento de medidas entrantes
-- [ ] Publicación de eventos de cambios
-- [ ] Dead Letter Queue para errores
-- [ ] Retry automático de mensajes fallidos
+### 🚧 Fase 3: Mensajería Asíncrona (En Progreso)
+- [x] Configuracion de topologia RabbitMQ de incidentes por tipo
+- [x] Declaracion de DLX/DLQ y bindings por tipo
+- [ ] Implementar `IncidentProducer` con publicacion de eventos reales
+- [ ] Implementar `IncidentConsumer` con manejo de errores y DLQ
+- [ ] Definir politica de retry (backoff, max intentos, alertas)
 
 ### 🔐 Fase 4: Seguridad y Autenticación (Planificado)
 - [ ] Integración con Spring Security
@@ -702,7 +731,7 @@ Ver `LIQUIBASE.md` para:
 
 ---
 
-## 🏛️ Arquitectura Futura
+## 🏛️ Arquitectura Asincrona (Actual y Evolucion)
 
 ### Arquitectura Event-Driven con RabbitMQ
 
@@ -757,7 +786,7 @@ Ver `LIQUIBASE.md` para:
 Cliente → REST API → Validación → Service → Repository → MySQL → Respuesta
 ```
 
-#### Flujo Asíncrono (RabbitMQ) - Futuro
+#### Flujo Asíncrono (RabbitMQ) - Actual en implementacion
 ```
 Cliente → REST API → RabbitMQ Queue → Background Worker → Validación → Repository → MySQL
                               ↓
@@ -907,6 +936,7 @@ spring.datasource.hikari.connection-timeout=20000
 - **AOP-README.md** - Documentación completa de AOP
 - **AOP-SUMMARY.md** - Resumen ejecutivo de AOP
 - **LIQUIBASE.md** - Documentación de migraciones con formato SQL
+- **RABBITMQ.md** - Topologia RabbitMQ de incidentes, DLQ y guia operativa
 - **test-aop.sh** - Script de pruebas de aspectos
 - **update-docker.sh** - Script para actualizar Docker
 

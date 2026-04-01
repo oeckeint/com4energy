@@ -1,13 +1,14 @@
 package com.com4energy.recordsapi.controller.common;
 
-import com.com4energy.recordsapi.common.MessageKey;
-import com.com4energy.recordsapi.common.Messages;
+import com.com4energy.recordsapi.common.RecordsApiCommonMessageKey;
+import com.com4energy.i18n.core.Messages;
 
 public final class ApiConstants {
 
     // API Paths
+    public static final String API_V1      = "/api/v1";
     public static final String TEST_ALL_PATH = "/testall";
-    public static final String ID_PATH = "/{id}";
+    public static final String ID_PATH     = "/{id}";
 
     // Pagination
     public static final int DEFAULT_PAGE_SIZE = 24;
@@ -24,7 +25,7 @@ public final class ApiConstants {
     public static final int HTTP_INTERNAL_SERVER_ERROR = 500;
 
     private ApiConstants() {
-        throw new IllegalStateException(Messages.get(MessageKey.UTILITY_CLASS));
+        throw new IllegalStateException(Messages.get(RecordsApiCommonMessageKey.UTILITY_CLASS));
     }
 
 }

@@ -1,7 +1,8 @@
 package com.com4energy.recordsapi.controller.medidas;
 
-import com.com4energy.recordsapi.common.MessageKey;
-import com.com4energy.recordsapi.common.Messages;
+import com.com4energy.recordsapi.common.RecordsApiCommonMessageKey;
+import com.com4energy.recordsapi.common.StringRules;
+import com.com4energy.i18n.core.Messages;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -15,7 +16,7 @@ import java.time.OffsetDateTime;
 public final class DateRangeHelper {
 
     private DateRangeHelper() {
-        throw new IllegalStateException(Messages.get(MessageKey.UTILITY_CLASS));
+        throw new IllegalStateException(Messages.get(RecordsApiCommonMessageKey.UTILITY_CLASS));
     }
 
     /**
@@ -29,7 +30,7 @@ public final class DateRangeHelper {
      * @return LocalDateTime or null if input is null/blank
      */
     public static LocalDateTime parseDate(String dateString, boolean endOfDay) {
-        if (dateString == null || dateString.isBlank()) {
+        if (StringRules.isBlank(dateString)) {
             return null;
         }
 

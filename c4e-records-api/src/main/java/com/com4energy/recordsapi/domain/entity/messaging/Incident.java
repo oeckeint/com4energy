@@ -1,9 +1,9 @@
-package com.com4energy.recordsapi.domain.entity;
+package com.com4energy.recordsapi.domain.entity.messaging;
 
-import com.com4energy.recordsapi.domain.enums.Environment;
-import com.com4energy.recordsapi.domain.enums.IncidentCategory;
-import com.com4energy.recordsapi.domain.enums.IncidentSeverity;
-import com.com4energy.recordsapi.domain.enums.IncidentStatus;
+import com.com4energy.event.publisher.common.Environment;
+import com.com4energy.event.publisher.incident.contract.IncidentCategory;
+import com.com4energy.event.publisher.incident.contract.IncidentSeverity;
+import com.com4energy.event.publisher.incident.contract.IncidentStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 
@@ -45,12 +45,6 @@ public class Incident {
     @Column(name = "http_method")
     private String httpMethod;
 
-    @Column(name = "trace_id")
-    private String traceId;
-
-    @Column(name = "span_id")
-    private String spanId;
-
     @Column(name = "user_id")
     private String userId;
 
@@ -76,12 +70,16 @@ public class Incident {
     @Column(length = 20)
     private IncidentStatus status = IncidentStatus.NEW;
 
+    @Column(name = "error_code")
     private String errorCode;
 
+    @Column(name = "filename")
     private String filename;
 
+    @Column(name = "file_type")
     private String fileType;
 
+    @Column(name = "folder_name")
     private String folderName;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -98,5 +96,17 @@ public class Incident {
     private LocalDateTime updatedOn;
 
     private String updatedBy;
+
+    @Column(columnDefinition = "TEXT")
+    private String comments;
+
+    @Column(columnDefinition = "TEXT")
+    private String resolution;
+
+    @Column(name = "closed_by")
+    private String closedBy;
+
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
 
 }
