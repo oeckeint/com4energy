@@ -38,19 +38,33 @@ public class IncidentController {
         return service.getIncidentsByService(serviceName);
     }
 
-    @GetMapping(IncidentConstants.BY_TRACE_PATH)
-    public List<Incident> getByTrace(@PathVariable String traceId) {
-        return service.getIncidentsByTraceId(traceId);
-    }
-
     @GetMapping(IncidentConstants.BY_SEVERITY_PATH)
     public Page<Incident> getBySeverity(@PathVariable IncidentSeverity severity, Pageable pageable) {
         return service.getIncidentsBySeverity(severity, pageable);
     }
 
     @PatchMapping(IncidentConstants.UPDATE_STATUS_PATH)
-    public Incident updateStatus(@PathVariable Long id, @RequestParam IncidentStatus status) {
-        return service.updateIncidentStatus(id, status);
+    public Incident updateStatus(
+            @PathVariable Long id,
+            @RequestParam IncidentStatus status,
+            @RequestParam(required = false) String closedBy) {
+        return service.updateIncidentStatus(id, status, closedBy);
+    }
+
+    @PatchMapping(IncidentConstants.ADD_COMMENT_PATH)
+    public Incident addComment(
+            @PathVariable Long id,
+            @RequestParam String comment,
+            @RequestParam(required = false) String updatedBy) {
+        return service.addComment(id, comment, updatedBy);
+    }
+
+    @PatchMapping(IncidentConstants.RESOLVE_PATH)
+    public Incident resolve(
+            @PathVariable Long id,
+            @RequestParam String resolution,
+            @RequestParam(required = false) String closedBy) {
+        return service.resolve(id, resolution, closedBy);
     }
 
 }

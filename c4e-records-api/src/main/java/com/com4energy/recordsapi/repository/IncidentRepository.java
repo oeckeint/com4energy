@@ -25,8 +25,6 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 
     List<Incident> findByEnvironment(String environment);
 
-    List<Incident> findByTraceId(String traceId);
-
     List<Incident> findByStatusIn(List<IncidentStatus> statuses);
 
     Page<Incident> findBySeverity(IncidentSeverity severity, Pageable pageable);

@@ -35,8 +35,6 @@ public class IncidentEventMapper {
                 .endpoint(event.endpoint())
                 .methodName(event.methodName())
                 .httpMethod(event.httpMethod())
-                .traceId(event.traceId())
-                .spanId(event.spanId())
                 .userId(event.userId())
                 .exceptionType(event.exceptionType())
                 .message(event.message())
@@ -68,4 +66,3 @@ public class IncidentEventMapper {
         }
     }
 }
-

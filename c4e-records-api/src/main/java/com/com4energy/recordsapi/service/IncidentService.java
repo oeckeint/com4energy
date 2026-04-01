@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -37,19 +38,45 @@ public class IncidentService {
         return repository.findByServiceName(serviceName);
     }
 
-    public List<Incident> getIncidentsByTraceId(String traceId) {
-        return repository.findByTraceId(traceId);
-    }
-
     public List<Incident> getRecentIncidents() {
         return repository.findTop20ByOrderByCreatedOnDesc();
     }
 
-    public Incident updateIncidentStatus(Long id, IncidentStatus status) {
+    public Incident updateIncidentStatus(Long id, IncidentStatus status, String closedBy) {
         Incident incident = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(Messages.format(RecordsApiCommonMessageKey.INCIDENT_LOG_NOT_FOUND, id)));
 
         incident.setStatus(status);
+        incident.setUpdatedBy(closedBy);
+        incident.setUpdatedOn(LocalDateTime.now());
+
+        if (status == IncidentStatus.SOLVED || status == IncidentStatus.DISCARDED) {
+            incident.setClosedBy(closedBy);
+            incident.setClosedAt(LocalDateTime.now());
+        }
+
+        return repository.save(incident);
+    }
+
+    public Incident addComment(Long id, String comment, String updatedBy) {
+        Incident incident = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(Messages.format(RecordsApiCommonMessageKey.INCIDENT_LOG_NOT_FOUND, id)));
+
+        incident.setComments(comment);
+        incident.setUpdatedBy(updatedBy);
+        incident.setUpdatedOn(LocalDateTime.now());
+
+        return repository.save(incident);
+    }
+
+    public Incident resolve(Long id, String resolution, String closedBy) {
+        Incident incident = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(Messages.format(RecordsApiCommonMessageKey.INCIDENT_LOG_NOT_FOUND, id)));
+
+        incident.setResolution(resolution);
+        incident.setStatus(IncidentStatus.SOLVED);
+        incident.setClosedBy(closedBy);
+        incident.setClosedAt(LocalDateTime.now());
 
         return repository.save(incident);
     }

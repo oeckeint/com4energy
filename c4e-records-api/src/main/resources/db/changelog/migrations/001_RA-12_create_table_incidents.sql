@@ -21,12 +21,6 @@ CREATE TABLE sge.incidents (
     http_method VARCHAR(10),
 
     -- ================================
-    -- DISTRIBUTED TRACING
-    -- ================================
-    trace_id VARCHAR(100),
-    span_id VARCHAR(100),
-
-    -- ================================
     -- USER CONTEXT
     -- ================================
     user_id VARCHAR(50),
@@ -64,7 +58,15 @@ CREATE TABLE sge.incidents (
     created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(50),
     updated_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by VARCHAR(50)
+    updated_by VARCHAR(50),
+
+    -- ================================
+    -- MANAGEMENT
+    -- ================================
+    comments TEXT COMMENT 'Notas internas del operador durante la investigacion',
+    resolution TEXT COMMENT 'Descripcion de como se resolvio el incidente al cerrarlo',
+    closed_by VARCHAR(50) COMMENT 'Usuario que cerro el incidente (SOLVED o DISCARDED)',
+    closed_at TIMESTAMP NULL COMMENT 'Fecha y hora en que se cerro el incidente'
 );
 
 -- ================================
@@ -75,7 +77,6 @@ CREATE INDEX idx_incident_service ON incidents(service_name);
 CREATE INDEX idx_incident_category ON incidents(category);
 CREATE INDEX idx_incident_type ON incidents(exception_type);
 CREATE INDEX idx_incident_created_on ON incidents(created_on);
-CREATE INDEX idx_incident_trace ON incidents(trace_id);
 CREATE INDEX idx_incident_filename ON incidents(filename);
 CREATE INDEX idx_incident_service_created ON incidents(service_name, created_on);
 
