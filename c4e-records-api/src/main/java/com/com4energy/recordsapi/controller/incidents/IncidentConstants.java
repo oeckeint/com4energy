@@ -10,13 +10,12 @@ final class IncidentConstants {
     static final String OPEN_PATH          = "/open";
     static final String RECENT_PATH        = "/recent";
     static final String BY_SERVICE_PATH    = "/service/{serviceName}";
-    static final String BY_TRACE_PATH      = "/trace/{traceId}";
     static final String BY_SEVERITY_PATH   = "/severity/{severity}";
     static final String UPDATE_STATUS_PATH = "/{id}/status";
+    static final String ADD_COMMENT_PATH   = "/{id}/comments";
+    static final String RESOLVE_PATH       = "/{id}/resolve";
 
     private IncidentConstants() {
         throw new IllegalStateException(Messages.get(RecordsApiCommonMessageKey.UTILITY_CLASS));
     }
 }
-
-

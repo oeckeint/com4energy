@@ -45,12 +45,6 @@ public class Incident {
     @Column(name = "http_method")
     private String httpMethod;
 
-    @Column(name = "trace_id")
-    private String traceId;
-
-    @Column(name = "span_id")
-    private String spanId;
-
     @Column(name = "user_id")
     private String userId;
 
@@ -102,5 +96,17 @@ public class Incident {
     private LocalDateTime updatedOn;
 
     private String updatedBy;
+
+    @Column(columnDefinition = "TEXT")
+    private String comments;
+
+    @Column(columnDefinition = "TEXT")
+    private String resolution;
+
+    @Column(name = "closed_by")
+    private String closedBy;
+
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
 
 }

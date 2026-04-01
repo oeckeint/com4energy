@@ -1,7 +1,9 @@
 package com.com4energy.recordsapi.messaging.incident;
 
 import com.com4energy.event.publisher.incident.config.IncidentPublisherProperties;
+import com.com4energy.event.publisher.incident.contract.IncidentEvent;
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -64,7 +66,21 @@ public class IncidentConfig {
 
     @Bean
     public MessageConverter jsonMessageConverter() {
-        return new Jackson2JsonMessageConverter();
+        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
+
+        DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+        Map<String, Class<?>> idMapping = new HashMap<>();
+        idMapping.put("com.com4energy.event.publisher.incident.contract.IncidentEvent", IncidentEvent.class);
+        idMapping.put("common.publisher.incident.contract.IncidentEvent", IncidentEvent.class);
+        typeMapper.setIdClassMapping(idMapping);
+        typeMapper.setTrustedPackages(
+                "com.com4energy.event.publisher.incident.contract",
+                "common.publisher.incident.contract",
+                "java.util"
+        );
+
+        converter.setJavaTypeMapper(typeMapper);
+        return converter;
     }
 
 }

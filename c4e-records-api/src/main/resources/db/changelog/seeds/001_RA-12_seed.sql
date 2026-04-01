@@ -10,8 +10,6 @@ INSERT INTO sge.incidents (
     endpoint,
     method_name,
     http_method,
-    trace_id,
-    span_id,
     user_id,
     exception_type,
     message,
@@ -24,17 +22,19 @@ INSERT INTO sge.incidents (
     folder_name,
     status,
     metadata,
-    created_by
+    created_by,
+    comments,
+    resolution,
+    closed_by,
+    closed_at
 ) VALUES
 
       (
           'c4e-files-api',
-          'dev',
+          'DEV',
           '/upload',
           'processCsv',
           'POST',
-          'trace-001',
-          'span-001',
           'user123',
           'ValidationException',
           'Columna obligatoria email no encontrada',
@@ -47,17 +47,19 @@ INSERT INTO sge.incidents (
           'error',
           'NEW',
           '{"seed": true, "row": 14, "column": "email"}',
-          'system'
+          'system',
+          'Pendiente de revision por el equipo de integraciones',
+          NULL,
+          NULL,
+          NULL
       ),
 
       (
           'c4e-files-api',
-          'dev',
+          'DEV',
           '/upload',
           'processPdf',
           'POST',
-          'trace-002',
-          'span-002',
           'user456',
           'IOException',
           'No se pudo leer el archivo PDF',
@@ -70,17 +72,19 @@ INSERT INTO sge.incidents (
           'error',
           'IN_PROGRESS',
           '{"seed": true, "fileSize": "2MB"}',
-          'system'
+          'system',
+          'Se esta investigando si el archivo esta corrupto',
+          NULL,
+          NULL,
+          NULL
       ),
 
       (
           'c4e-payments-api',
-          'qa',
+          'QA',
           '/process',
           'validatePaymentFile',
           'POST',
-          'trace-003',
-          'span-003',
           NULL,
           'ValidationWarning',
           'Formato inesperado en columna amount',
@@ -93,17 +97,19 @@ INSERT INTO sge.incidents (
           'pending',
           'NEW',
           '{"seed": true, "column": "amount"}',
-          'system'
+          'system',
+          NULL,
+          NULL,
+          NULL,
+          NULL
       ),
 
       (
           'c4e-files-api',
-          'prod',
+          'PROD',
           '/upload',
           'processCsv',
           'POST',
-          'trace-004',
-          'span-004',
           'user999',
           'NullPointerException',
           'Valor nulo inesperado en procesamiento',
@@ -116,7 +122,11 @@ INSERT INTO sge.incidents (
           'processed',
           'SOLVED',
           '{"seed": true, "row": 22}',
-          'system'
+          'system',
+          'Detectado en revision de logs post-despliegue',
+          'El valor nulo provenia de un campo opcional no validado. Se añadio validacion en el mapper.',
+          'jgonzalez',
+          '2026-03-29 18:45:00'
       );
 
 -- rollback DELETE FROM sge.incidents WHERE created_by='system';
