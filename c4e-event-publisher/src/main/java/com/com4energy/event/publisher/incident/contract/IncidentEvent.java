@@ -26,7 +26,7 @@ public record IncidentEvent(
         String errorCode,
         String filename,
         String fileType,
-        String folderName,
+        String finalPath,
         String metadata,
         String createdBy,
         LocalDateTime updatedOn,
