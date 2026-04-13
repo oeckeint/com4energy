@@ -3,6 +3,9 @@
 ## Objetivo
 Documentar la topologia RabbitMQ usada por `records-api` para manejar incidentes por tipo (`validation`, `integration`, `system`) y definir una guia operativa clara para DLQ.
 
+## Ver tambien
+- [`docs/RABBITMQ_SHARED_EXCHANGES.md`](docs/RABBITMQ_SHARED_EXCHANGES.md) - regla para reutilizar exchanges compartidos sin provocar errores de tipo (`direct` vs `topic`).
+
 ## Alcance actual (estado real)
 - Existe configuracion de colas, exchanges, bindings, DLX y DLQ por tipo.
 - La topologia se construye desde propiedades (`rabbitmq.incidents.types`).

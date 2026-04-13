@@ -57,6 +57,41 @@ c4e:
         deadLetterExchange: incident.system.exchange.dlx
         deadLetterQueue: incident.system.queue.dlq
 
+  # ==============================
+  # RabbitMQ – File Record Events (consumer)
+  # Publicados por ingestion-service via outbox worker
+  # ==============================
+  file-records:
+    types:
+      rejected:
+        eventType: FILE_REJECTED
+        queue: c4e.file.record.rejected.queue
+        exchange: c4e.exchange
+        routingKey: c4e.file.rejected
+        deadLetterExchange: c4e.file.record.rejected.dlx
+        deadLetterQueue: c4e.file.record.rejected.dlq
+      alreadyExists:
+        eventType: FILE_ALREADY_EXISTS
+        queue: c4e.file.record.already-exists.queue
+        exchange: c4e.exchange
+        routingKey: c4e.file.already-exists
+        deadLetterExchange: c4e.file.record.already-exists.dlx
+        deadLetterQueue: c4e.file.record.already-exists.dlq
+      defectReportCreated:
+        eventType: FILE_DEFECT_REPORT_CREATED
+        queue: c4e.file.record.defect-report-created.queue
+        exchange: c4e.exchange
+        routingKey: c4e.file.defect-report-created
+        deadLetterExchange: c4e.file.record.defect-report-created.dlx
+        deadLetterQueue: c4e.file.record.defect-report-created.dlq
+      persistenceQuarantine:
+        eventType: FILE_PERSISTENCE_QUARANTINE
+        queue: c4e.file.record.persistence-quarantine.queue
+        exchange: c4e.exchange
+        routingKey: c4e.file.persistence-quarantine
+        deadLetterExchange: c4e.file.record.persistence-quarantine.dlx
+        deadLetterQueue: c4e.file.record.persistence-quarantine.dlq
+
 # ==============================
 # Perfil DEV
 # ==============================

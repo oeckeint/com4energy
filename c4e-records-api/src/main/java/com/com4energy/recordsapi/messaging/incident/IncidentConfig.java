@@ -1,5 +1,8 @@
 package com.com4energy.recordsapi.messaging.incident;
 
+import static com.com4energy.recordsapi.common.Constants.RABBITMQ_DEAD_LETTER_EXCHANGE;
+import static com.com4energy.recordsapi.common.Constants.RABBITMQ_DEAD_LETTER_ROUTING_KEY;
+
 import com.com4energy.event.publisher.incident.config.IncidentPublisherProperties;
 import com.com4energy.event.publisher.incident.contract.IncidentEvent;
 import org.springframework.amqp.core.*;
@@ -19,9 +22,6 @@ import java.util.Map;
 @EnableConfigurationProperties(IncidentPublisherProperties.class)
 public class IncidentConfig {
 
-    private static final String DEAD_LETTER_EXCHANGE_ARGUMENT = "x-dead-letter-exchange";
-    private static final String DEAD_LETTER_QUEUE_ARGUMENT = "x-dead-letter-routing-key";
-
     private final IncidentPublisherProperties props;
 
     public IncidentConfig(IncidentPublisherProperties props) {
@@ -40,8 +40,8 @@ public class IncidentConfig {
         props.getTypes().forEach((type, config) -> {
             // Args para enrutar mensajes fallidos al DLX
             Map<String, Object> args = new HashMap<>();
-            args.put(DEAD_LETTER_EXCHANGE_ARGUMENT, config.deadLetterExchange());
-            args.put(DEAD_LETTER_QUEUE_ARGUMENT, config.deadLetterQueue());
+            args.put(RABBITMQ_DEAD_LETTER_EXCHANGE, config.deadLetterExchange());
+            args.put(RABBITMQ_DEAD_LETTER_ROUTING_KEY, config.deadLetterQueue());
 
             // Cola principal y binding
             Queue mainQueue = new Queue(config.queue(), true, false, false, args);

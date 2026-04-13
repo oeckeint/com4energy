@@ -45,7 +45,7 @@ public class IncidentEventMapper {
                 .errorCode(event.errorCode())
                 .filename(event.filename())
                 .fileType(event.fileType())
-                .folderName(event.folderName())
+                .folderName(event.finalPath())
                 .createdBy(event.createdBy())
                 .updatedOn(event.updatedOn())
                 .updatedBy(event.updatedBy())

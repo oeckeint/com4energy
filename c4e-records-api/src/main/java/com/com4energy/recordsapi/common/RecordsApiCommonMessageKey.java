@@ -39,6 +39,12 @@ public enum RecordsApiCommonMessageKey implements MessageKey {
     INCIDENT_PAYLOAD_JSON_PARSE_ERROR("incident.payload.json.parse.error"),
 
     // ---------------------------
+    // FILE RECORD EVENT MESSAGES
+    // ---------------------------
+    FILE_RECORD_EVENT_SAVED("file.record.event.saved"),
+    FILE_RECORD_EVENT_PROCESS_ERROR("file.record.event.process.error"),
+
+    // ---------------------------
     // MEDIDAQH / BUSINESS DOMAIN MESSAGES
     // ---------------------------
     MEDIDA_NOT_FOUND("medidaqh.not.found"),
