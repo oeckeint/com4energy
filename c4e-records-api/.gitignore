@@ -58,4 +58,3 @@ replay_pid*
 
 # Local environment files
 .env
-.sdkmanrc
