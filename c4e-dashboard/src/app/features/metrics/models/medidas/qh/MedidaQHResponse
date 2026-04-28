@@ -1,0 +1,20 @@
+import { MedidaQH } from './MedidaQH';
+import { PageInfo } from '../../../components/pagination/PageInfo';
+
+export interface EnergyMeasurementResponse {
+  content: MedidaQH[];
+  pageable: PageInfo;
+  last: boolean;
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  sort: {
+    empty: boolean;
+    sorted: boolean;
+    unsorted: boolean;
+  };
+  numberOfElements: number;
+  first: boolean;
+  empty: boolean;
+}
