@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: c4e-outbox-worker
+  datasource:
+    url: ${DB_URL_SGE}
+    username: ${DB_USER_SGE}
+    password: ${DB_PASSWORD_SGE}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+server:
+  port: 8090
+
+logging:
+  level:
+    org.springframework: INFO
+    com.com4energy: INFO
+    root: INFO
+
+c4e:
+  outbox:
+    worker:
+      enabled: true
+      poll-interval-ms: 5000
+      batch-size: 50
+      # worker-id: outbox-worker-node-1
+    cleanup:
+      enabled: true
+      retention-days: 7
+      batch-size: 500
+      cron: "0 0 * * * *"
+    routing:
+      types:
+        FILE_REJECTED:
+          exchange: c4e.exchange
+          routing-key: c4e.file.rejected
+        FILE_VALIDATION_INCIDENT:
+          exchange: incident.validation.exchange
+          routing-key: incident.validation.key
+        FILE_ALREADY_EXISTS:
+          exchange: c4e.exchange
+          routing-key: c4e.file.already-exists
+        FILE_DEFECT_REPORT_CREATED:
+          exchange: c4e.exchange
+          routing-key: c4e.file.defect-report-created
+        FILE_PERSISTENCE_QUARANTINE:
+          exchange: c4e.exchange
+          routing-key: c4e.file.persistence-quarantine
+        # CUSTOM_EVENT_EXAMPLE:
+        #   exchange: c4e.custom.exchange
+        #   routing-key: c4e.custom.routing
+
