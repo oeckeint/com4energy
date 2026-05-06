@@ -1,9 +1,27 @@
 {
-  "/api/*": {
+  "/api/v1/medidaqh": {
     "target": "http://localhost:8082",
     "secure": false,
     "changeOrigin": true,
+    "logLevel": "info"
+  },
+  "/api/v1/files": {
+    "target": "http://localhost:8083",
+    "secure": false,
+    "changeOrigin": true,
     "logLevel": "info",
-    "pathRewrite": { "^/api": "" }
+    "pathRewrite": { "^/api/v1": "" }
+  },
+  "/api/v1/notifications/file-processing/stream": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "info"
+  },
+  "/api/v1/**": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "info"
   }
 }

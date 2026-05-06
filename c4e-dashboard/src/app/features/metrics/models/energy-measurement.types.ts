@@ -51,17 +51,19 @@ export interface PageInfo {
 }
 
 export interface EnergyMeasurementResponse {
-  content: EnergyMeasurement[];
-  pageable: PageInfo;
-  last: boolean;
-  totalPages: number;
-  totalElements: number;
-  size: number;
+  content?: EnergyMeasurement[];
+  data?: EnergyMeasurement[];
   number: number;
-  sort: PageSort;
-  numberOfElements: number;
+  size: number;
+  totalElements?: number;
+  totalPages?: number;
   first: boolean;
-  empty: boolean;
+  last: boolean;
+  // Legacy fields for backward compatibility
+  pageable?: PageInfo;
+  sort?: PageSort;
+  numberOfElements?: number;
+  empty?: boolean;
 }
 
 /**

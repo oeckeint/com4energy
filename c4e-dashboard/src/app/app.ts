@@ -1,6 +1,7 @@
 import { Component, signal, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { EnergyMeasurementService } from './features/metrics/services/energy-measurement.service';
+import { FileProcessingNotificationsService } from './features/metrics/services/file-processing-notifications.service';
 
 @Component({
   selector: 'app-root',
@@ -11,6 +12,7 @@ import { EnergyMeasurementService } from './features/metrics/services/energy-mea
 export class App {
   protected readonly title = signal('c4e-dashboard');
   protected readonly measurementsService = inject(EnergyMeasurementService);
+  protected readonly notificationsService = inject(FileProcessingNotificationsService);
 
   // Estados para los dropdowns
   showVistasDropdown = signal(false);
@@ -19,6 +21,7 @@ export class App {
   constructor() {
     // Cargar por defecto el cliente 3215 al iniciar la aplicación
     this.selectClient('3215');
+    this.notificationsService.connect();
   }
 
   selectClient(clientId: string) {

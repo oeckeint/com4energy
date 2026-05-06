@@ -1,0 +1,119 @@
+<div class="p-6">
+  <h1 class="text-2xl font-bold mb-4">Medida H</h1>
+
+  <div class="measure-split-layout measure-h-top-layout mb-4">
+    <div class="measure-split-left">
+      <app-measure-filters
+        [day]="filters.day"
+        (dayChange)="onDayChange($event)"
+        [clientIdsText]="filters.clientIdsText"
+        (clientIdsTextChange)="filters.clientIdsText = $event"
+        [loading]="service.loading()"
+        [helperText]="'Opcional. Separar IDs por coma (ej: 3366,3367). Sin filtro: muestra todos los clientes.'"
+        (search)="applyFilters()"
+        (clear)="clearFilters()"
+      />
+    </div>
+
+    <div class="measure-split-middle">
+      <div class="measure-split-chart-wrap">
+        <app-measure-completeness-gauge
+          [clientIds]="service.clientIds()"
+          [columnValidation]="service.columnValidation()"
+        />
+        <app-measure-hourly-mini-chart
+          [rows]="service.rows()"
+          [chartYMax]="2500"
+          [columnValidation]="service.columnValidation()"
+          [clientIds]="service.clientIds()"
+          [currentDate]="filters.day"
+        />
+      </div>
+    </div>
+
+  </div>
+
+  <div class="measure-h-tools-rail" aria-label="Barra de herramientas">
+    <button
+      type="button"
+      class="measure-h-tools-button"
+      [class.measure-h-tools-button--active]="activeTool === 'auditor'"
+      (click)="toggleTool('auditor')"
+      [attr.aria-expanded]="activeTool === 'auditor'"
+      aria-controls="medida-h-tools-drawer"
+      aria-label="Abrir panel de auditor"
+      title="Auditor"
+    >
+      &#9881;
+    </button>
+
+    <button
+      type="button"
+      class="measure-h-tools-button"
+      [class.measure-h-tools-button--active]="activeTool === 'utilidades'"
+      (click)="toggleTool('utilidades')"
+      [attr.aria-expanded]="activeTool === 'utilidades'"
+      aria-controls="medida-h-tools-drawer"
+      aria-label="Abrir panel de utilidades"
+      title="Utilidades"
+    >
+      &#9883;
+    </button>
+  </div>
+
+  <div
+    class="measure-h-tools-backdrop"
+    [class.measure-h-tools-backdrop--open]="toolsPanelOpen"
+    (click)="closeToolsPanel()"
+  ></div>
+
+  <aside
+    id="medida-h-tools-drawer"
+    class="measure-h-tools-drawer"
+    [class.measure-h-tools-drawer--open]="toolsPanelOpen"
+    aria-label="Panel de herramientas"
+  >
+    <div class="measure-h-tools-header">
+      <strong>{{ activeToolTitle }}</strong>
+      <button type="button" class="measure-h-tools-close" (click)="closeToolsPanel()" title="Cerrar panel">&times;</button>
+    </div>
+    <div class="measure-h-tools-body">
+      @if (activeTool === 'auditor') {
+        <app-measure-auditor-panel
+          [clientIds]="service.clientIds()"
+          [columnValidation]="service.columnValidation()"
+          [currentDate]="filters.day"
+        />
+      } @else {
+        <div class="measure-h-tools-placeholder">Aqui iremos agregando mas herramientas.</div>
+      }
+    </div>
+  </aside>
+
+  @if (service.error()) {
+    <div class="alert alert-danger">{{ service.error() }}</div>
+  }
+
+  @if (!service.loading() && service.uniqueClients() > 0) {
+    <div class="d-flex align-items-center gap-3 mb-2 text-muted small">
+      <span>📊 <strong>{{ service.uniqueClients() }}</strong> clientes · <strong>{{ service.totalRecords() }}</strong> puntos cargados</span>
+    </div>
+  }
+
+  @if (service.loading()) {
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <div class="spinner-border spinner-border-sm" role="status"></div>
+      <span>Cargando medida H...</span>
+    </div>
+  }
+
+  <app-measure-matrix-table
+    [rows]="service.rows()"
+    [clientIds]="service.clientIds()"
+    [columnValidation]="service.columnValidation()"
+    [loading]="service.loading()"
+    [expectedFallback]="24"
+    [clientColumnMinWidth]="140"
+  />
+</div>
+

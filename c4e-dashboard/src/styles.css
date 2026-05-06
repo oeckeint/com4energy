@@ -1,1 +1,288 @@
 /* You can add global styles to this file, and also import other style files */
+
+.measure-table-shell {
+  max-width: 100%;
+}
+
+.measure-table-scroll {
+  position: relative;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.measure-table {
+  width: max-content;
+  min-width: max-content;
+}
+
+.measure-table th,
+.measure-table td {
+  text-align: center;
+}
+
+.measure-table tbody td {
+  cursor: pointer;
+}
+
+.measure-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bs-table-bg, #f8f9fa);
+}
+
+.measure-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--bs-body-bg, #fff);
+  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.08);
+}
+
+.measure-sticky-total {
+  position: sticky;
+  left: var(--measure-hour-width, 110px);
+  z-index: 3;
+  background: var(--bs-body-bg, #fff);
+  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.08);
+}
+
+.measure-sticky-head {
+  z-index: 4 !important;
+  background: var(--bs-table-bg, #f8f9fa);
+}
+
+.measure-missing-cell {
+  color: #b42318;
+  background: #fff5f5;
+  font-weight: 600;
+}
+
+.measure-missing-mark {
+  color: #b42318;
+}
+
+.measure-missing-header {
+  margin-left: 0.35rem;
+  color: #b42318;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.measure-cross-row,
+.measure-cross-col {
+  background: #f4f8ff;
+}
+
+.measure-table thead th.measure-cross-col {
+  background: #eaf2ff;
+}
+
+.measure-cell-selected {
+  background: #dbe9ff !important;
+  box-shadow: inset 0 0 0 1px #3b82f6;
+  font-weight: 700;
+}
+
+.measure-total-warning {
+  background: #fff8db;
+}
+
+.measure-total-warning-icon {
+  color: #b54708;
+  margin-right: 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.measure-total-row td {
+  background: #f8fafc;
+  font-weight: 700;
+  border-top: 2px solid #e4e7ec;
+}
+
+.measure-mini-chart-card {
+  width: 308px;
+  border: 1px solid #eaecf0;
+  border-radius: 10px;
+  padding: 5px 7px 4px;
+  background: #fff;
+}
+
+.measure-mini-chart-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #344054;
+  margin-bottom: 2px;
+  text-align: right;
+}
+
+.measure-mini-chart {
+  width: 100%;
+  height: 146px;
+}
+
+.measure-mini-axis {
+  stroke: #98a2b3;
+  stroke-width: 1;
+}
+
+.measure-mini-grid {
+  stroke: #eaecf0;
+  stroke-width: 1;
+}
+
+.measure-mini-line {
+  fill: none;
+  stroke: #1570ef;
+  stroke-width: 2;
+}
+
+.measure-mini-dot {
+  fill: #1570ef;
+}
+
+.measure-mini-tick-label {
+  fill: #667085;
+  font-size: 10px;
+}
+
+.measure-validation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.measure-validation-item {
+  border: 1px solid #d0d5dd;
+  border-radius: 0.5rem;
+  background: #f8f9fa;
+  padding: 0.45rem 0.6rem;
+  min-width: 150px;
+}
+
+.measure-validation-item.is-warning {
+  border-color: #fda29b;
+  background: #fff5f5;
+}
+
+.measure-validation-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.measure-validation-detail {
+  font-size: 0.8rem;
+  color: #475467;
+}
+
+.measure-validation-missing {
+  font-size: 0.78rem;
+  color: #b42318;
+  font-weight: 700;
+}
+
+.measure-validation-ok {
+  font-size: 0.78rem;
+  color: #027a48;
+  font-weight: 700;
+}
+
+.measure-split-layout {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.measure-split-left,
+.measure-split-right {
+  flex: 1 1 50%;
+  min-width: 0;
+}
+
+.measure-split-chart-wrap {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.measure-gauge-card {
+  width: 190px;
+  border: 1px solid #eaecf0;
+  border-radius: 10px;
+  padding: 5px 7px 8px;
+  background: #fff;
+}
+
+.measure-gauge-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #344054;
+  margin-bottom: 2px;
+  text-align: center;
+}
+
+.measure-gauge-svg {
+  width: 100%;
+  height: 128px;
+}
+
+.measure-gauge-track {
+  fill: none;
+  stroke: #eaecf0;
+  stroke-width: 11;
+  stroke-linecap: round;
+}
+
+.measure-gauge-detail {
+  fill: none;
+  stroke: #f79009;
+  stroke-width: 11;
+  stroke-linecap: round;
+}
+
+.measure-gauge-ok {
+  fill: none;
+  stroke: #12b76a;
+  stroke-width: 11;
+  stroke-linecap: round;
+}
+
+.measure-gauge-center {
+  fill: #101828;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.measure-gauge-sub {
+  fill: #667085;
+  font-size: 10px;
+}
+
+.measure-gauge-metric {
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #344054;
+}
+
+@media (max-width: 992px) {
+  .measure-split-layout {
+    flex-direction: column;
+  }
+
+  .measure-split-left,
+  .measure-split-right {
+    flex-basis: 100%;
+    width: 100%;
+  }
+
+  .measure-split-chart-wrap {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+

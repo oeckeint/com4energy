@@ -1,8 +1,14 @@
-import { Component, inject, ChangeDetectionStrategy, computed, signal } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, computed, signal, ViewChild, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BaseChartDirective, provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { EnergyMeasurementService } from '../services/energy-measurement.service';
+
+// Formatea números con formato europeo: miles (.) y redondea hacia arriba (Math.ceil)
+const formatEnergyValue = (value: number | null | undefined): string => {
+  if (value === null || value === undefined) return '-';
+  return Math.ceil(value).toLocaleString('es-ES');
+};
 
 @Component({
   selector: 'app-energy-chart',
@@ -39,12 +45,12 @@ import { EnergyMeasurementService } from '../services/energy-measurement.service
           </div>
         }
         @if (service.consumptionData().length > 0) {
-          <canvas baseChart
-            [data]="chartData()"
-            [options]="chartOptions"
-            type="line">
-          </canvas>
-        }
+           <canvas #chartRef baseChart
+             [data]="chartData()"
+             [options]="chartOptions()"
+             type="line">
+           </canvas>
+         }
       </div>
     </div>
   `,
@@ -53,31 +59,79 @@ import { EnergyMeasurementService } from '../services/energy-measurement.service
 export class EnergyChartComponent {
   public service = inject(EnergyMeasurementService);
 
+  @ViewChild(BaseChartDirective) chartComponent?: BaseChartDirective;
+
   showMax = signal(false);
   showMin = signal(false);
   showAvg = signal(false);
 
-  // chart.js options
-  chartOptions: ChartConfiguration<'line'>['options'] = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: true },
-      tooltip: {
-        callbacks: {
-          afterBody: (context) => {
-            const index = context[0].dataIndex;
-            const point = this.service.consumptionData()[index];
-            return point ? `Archivo: ${point.origin}` : '';
+  // Calcular opciones del gráfico dinámicamente (COMPUTED para OnPush)
+  chartOptions = computed((): ChartConfiguration<'line'>['options'] => {
+    const points = this.service.consumptionData();
+    let maxValue = 0;
+
+    if (points.length > 0) {
+      // Encontrar el máximo valor entre consumo, máx, mín, promedio
+      maxValue = Math.max(
+        this.service.maxConsumption() || 0,
+        ...points.map(p => p.consumption || 0)
+      );
+    }
+
+    // Calcular máximo del eje Y con 20% de padding para mejor vista
+    const yMax = maxValue > 0 ? Math.ceil(maxValue * 1.2) : 100;
+
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true },
+        tooltip: {
+          callbacks: {
+            afterBody: (context) => {
+              const index = context[0].dataIndex;
+              const point = this.service.consumptionData()[index];
+              return point ? `Archivo: ${point.origin}` : '';
+            }
           }
         }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: yMax,
+          title: { display: true, text: 'kWh' }
+        },
+        x: { title: { display: true, text: 'Hora' } }
       }
-    },
-    scales: {
-      y: { beginAtZero: true, title: { display: true, text: 'kWh' } },
-      x: { title: { display: true, text: 'Hora' } }
-    }
-  };
+    };
+  });
+
+  constructor() {
+    // Effect para actualizar el gráfico cuando cambien opciones o datos
+    effect(() => {
+      // Accesar a ambos para que el effect se reactive a cambios
+      this.chartOptions();
+      this.chartData();
+
+      // Pequeño delay para asegurar que el canvas está renderizado
+      setTimeout(() => {
+        const chart = this.chartComponent?.chart;
+        if (chart) {
+          const options = this.chartOptions();
+          const yScale = options?.scales?.['y'];
+          if (yScale) {
+            chart.options.scales = chart.options.scales ?? {};
+            (chart.options.scales as any)['y'] = {
+              ...((chart.options.scales as any)['y'] ?? {}),
+              ...yScale
+            };
+          }
+          chart.update('active');
+        }
+      }, 0);
+    });
+  }
 
   // computed chart payload based on service.consumptionData
   chartData = computed(() => {
@@ -96,7 +150,7 @@ export class EnergyChartComponent {
     if (this.showMax() && points.length > 0) {
       const max = this.service.maxConsumption();
       datasets.push({
-        label: `Máximo (${max.toFixed(2)})`,
+        label: `Máximo (${formatEnergyValue(max)})`,
         data: points.map(() => max),
         borderColor: '#d32f2f',
         borderDash: [5, 5],
@@ -109,7 +163,7 @@ export class EnergyChartComponent {
     if (this.showMin() && points.length > 0) {
       const min = this.service.minConsumption();
       datasets.push({
-        label: `Mínimo (${min.toFixed(2)})`,
+        label: `Mínimo (${formatEnergyValue(min)})`,
         data: points.map(() => min),
         borderColor: '#388e3c',
         borderDash: [5, 5],
@@ -122,7 +176,7 @@ export class EnergyChartComponent {
     if (this.showAvg() && points.length > 0) {
       const avg = this.service.avgConsumption();
       datasets.push({
-        label: `Promedio (${avg.toFixed(2)})`,
+        label: `Promedio (${formatEnergyValue(avg)})`,
         data: points.map(() => avg),
         borderColor: '#f57c00',
         borderDash: [2, 2],

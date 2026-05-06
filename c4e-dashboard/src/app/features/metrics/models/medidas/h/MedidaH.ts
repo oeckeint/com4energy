@@ -1,13 +1,11 @@
-
-export interface MedidaQH {
-  idMedidaQH: number;
+export interface MedidaH {
+  idMedidaH: number;
   clienteId: number;
-  idCliente?: number;
-  tipomed: number;
+  tipoMedida: number;
   fecha: string; // ISO 8601 format: "2025-01-19T04:30:00"
   banderaInvVer: number;
 
-  // Energía activa
+  // Energía activa (en float para MedidaH)
   actent: number;      // Energía activa entrante (consumo)
   qactent: number;     // Calidad de energía activa entrante
   actsal: number;      // Energía activa saliente
@@ -38,3 +36,4 @@ export interface MedidaQH {
   updatedBy: string | null;
   temporal: number;
 }
+

@@ -2,6 +2,12 @@ import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EnergyMeasurementService } from '../services/energy-measurement.service';
 
+// Formatea números con formato europeo: miles (.) y redondea hacia arriba (Math.ceil)
+const formatEnergyValue = (value: number | null | undefined): string => {
+  if (value === null || value === undefined) return '-';
+  return Math.ceil(value).toLocaleString('es-ES');
+};
+
 @Component({
   selector: 'app-energy-list',
   standalone: true,
@@ -22,17 +28,17 @@ import { EnergyMeasurementService } from '../services/energy-measurement.service
                     <strong>Total:</strong> {{ service.rawMeasurements().length }}
                   </div>
                   <div class="btn btn-sm border border-secondary text-secondary bg-secondary-subtle rounded-pill px-3 shadow-sm">
-                    <strong>Energía:</strong> {{ service.totalDailyConsumption().toFixed(2) }} kWh
-                  </div>
-                  <div class="btn btn-sm border border-danger text-danger bg-danger-subtle rounded-pill px-3 shadow-sm">
-                    <strong>Máx:</strong> {{ service.maxConsumption().toFixed(2) }} kWh
-                  </div>
-                  <div class="btn btn-sm border border-success text-success bg-success-subtle rounded-pill px-3 shadow-sm">
-                    <strong>Mín:</strong> {{ service.minConsumption().toFixed(2) }} kWh
-                  </div>
-                  <div class="btn btn-sm border border-warning text-warning bg-warning-subtle rounded-pill px-3 shadow-sm">
-                    <strong>Prom:</strong> {{ service.avgConsumption().toFixed(2) }} kWh
-                  </div>
+                     <strong>Energía:</strong> {{ formatEnergyValue(service.totalDailyConsumption()) }} kWh
+                   </div>
+                   <div class="btn btn-sm border border-danger text-danger bg-danger-subtle rounded-pill px-3 shadow-sm">
+                     <strong>Máx:</strong> {{ formatEnergyValue(service.maxConsumption()) }} kWh
+                   </div>
+                   <div class="btn btn-sm border border-success text-success bg-success-subtle rounded-pill px-3 shadow-sm">
+                     <strong>Mín:</strong> {{ formatEnergyValue(service.minConsumption()) }} kWh
+                   </div>
+                   <div class="btn btn-sm border border-warning text-warning bg-warning-subtle rounded-pill px-3 shadow-sm">
+                     <strong>Prom:</strong> {{ formatEnergyValue(service.avgConsumption()) }} kWh
+                   </div>
                 </div>
               </div>
             </div>
@@ -89,4 +95,5 @@ import { EnergyMeasurementService } from '../services/energy-measurement.service
 })
 export class EnergyListComponent {
   service = inject(EnergyMeasurementService);
+  formatEnergyValue = formatEnergyValue;
 }

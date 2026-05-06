@@ -2,7 +2,7 @@
   <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:20px">
     <div style="display:flex; align-items:center; gap:8px">
       <div style="background:#1976d2; color:white; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:bold">C4E</div>
-      <h1 style="margin:0;font-size:18px; white-space: nowrap">Dashboard — <span style="font-weight:600">Medida QH</span></h1>
+      <h1 style="margin:0;font-size:18px; white-space: nowrap">Dashboard — <span style="font-weight:600">Medidas</span></h1>
     </div>
 
     <!-- Nueva Barra de Navegación con Dropdowns -->
@@ -15,8 +15,8 @@
         </button>
         <div class="dropdown-menu" [class.show]="showVistasDropdown()">
           <a class="dropdown-item" href="/metrics">Medida QH</a>
-          <a class="dropdown-item">Medidas CCH</a>
-          <a class="dropdown-item">Medidas H</a>
+          <a class="dropdown-item" href="/metrics/cch">Medida CCH</a>
+          <a class="dropdown-item" href="/metrics/h">Medida H</a>
         </div>
       </div>
 
@@ -27,9 +27,9 @@
           <span class="caret"></span>
         </button>
         <div class="dropdown-menu" [class.show]="showArchivosDropdown()">
-          <a class="dropdown-item">Peajes</a>
-          <a class="dropdown-item">Facturas</a>
-          <a class="dropdown-item">Otras Facturas</a>
+          <a class="dropdown-item" href="/files/upload">Carga</a>
+          <a class="dropdown-item" href="/files/records">Historial</a>
+          <a class="dropdown-item" href="/files/events">Eventos</a>
         </div>
       </div>
     </nav>
@@ -62,3 +62,28 @@
 <main style="padding:16px;max-width:1100px;margin:0 auto">
   <router-outlet></router-outlet>
 </main>
+
+<section class="realtime-toast-container">
+  @if (!notificationsService.connected()) {
+    <div class="realtime-toast realtime-toast--status">
+      Reconectando stream de eventos...
+    </div>
+  }
+
+  @for (item of notificationsService.notifications(); track item.id) {
+    <article class="realtime-toast" [class.realtime-toast--error]="item.failureReason">
+      <div class="realtime-toast__title">{{ item.eventType }} · {{ item.status }}</div>
+      <div class="realtime-toast__file">{{ item.filename }}</div>
+      <div class="realtime-toast__meta">
+        <span>{{ item.fileType || '-' }}</span>
+        <span>·</span>
+        <span>{{ item.origin || '-' }}</span>
+      </div>
+      @if (item.failureReason) {
+        <div class="realtime-toast__reason">{{ item.failureReason }}</div>
+      }
+      <button class="realtime-toast__close" (click)="notificationsService.removeNotification(item.id)">×</button>
+    </article>
+  }
+</section>
+
