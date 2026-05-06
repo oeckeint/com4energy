@@ -41,20 +41,27 @@
         <span style="font-weight:600;font-size:15px;color:#000">{{ measurementsService.currentClientId() ?? 'Todos' }}</span>
       </div>
 
-      <div style="display:flex; gap:4px">
+      <div style="display:flex; gap:4px; align-items:center">
         <input #clientIdInput [value]="'3215'" placeholder="ID cliente" style="padding:6px 12px;border:1px solid #ddd;border-radius:20px;width:100px; font-size:13px" />
+        <button
+          #notificationsButton
+          type="button"
+          class="notification-campaign-button"
+          (click)="toggleNotificationsPanel()"
+          [attr.aria-expanded]="showNotificationsPanel()"
+          aria-controls="notification-feed-panel"
+          aria-label="Abrir notificaciones"
+          title="Notificaciones"
+        >
+          <svg class="notification-campaign-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M15 17H9m10-1V11a7 7 0 1 0-14 0v5L3 18v1h18v-1l-2-2Zm-4 4a3 3 0 0 1-6 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          @if (unreadNotificationsCount() > 0) {
+            <span class="notification-campaign-badge">{{ unreadNotificationsCount() }}</span>
+          }
+        </button>
         <button (click)="selectClient(clientIdInput.value)" style="padding:6px 14px;border-radius:20px;border:none;background:#1976d2;color:#fff; font-size:13px; font-weight:500; cursor:pointer">Ver</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Segunda fila: Controles de Tiempo (Opcional, se puede mover o mantener aquí) -->
-  <div style="max-width:1200px;margin:8px auto 0;display:flex;align-items:center;gap:12px; padding-top:8px; border-top:1px solid #f5f5f5">
-    <div style="display:flex; gap:8px; align-items:center; margin-left:auto">
-      <input #startDate type="datetime-local" style="padding:5px 10px;border:1px solid #ddd;border-radius:6px; font-size:12px" />
-      <input #endDate type="datetime-local" style="padding:5px 10px;border:1px solid #ddd;border-radius:6px; font-size:12px" />
-      <button (click)="applyRange(startDate.value,endDate.value)" style="padding:5px 12px;border-radius:6px;border:1px solid #ddd;background:#fff;color:#444; font-size:12px; font-weight:500; cursor:pointer">Aplicar rango</button>
-      <button (click)="loadLast24()" style="padding:5px 12px;border-radius:6px;border:none;background:#1976d2;color:#fff; font-size:12px; font-weight:500; cursor:pointer">Últimas 24h</button>
     </div>
   </div>
 </header>
@@ -62,6 +69,65 @@
 <main style="padding:16px;max-width:1100px;margin:0 auto">
   <router-outlet></router-outlet>
 </main>
+
+<div
+  class="notification-feed-backdrop"
+  [class.notification-feed-backdrop--open]="showNotificationsPanel()"
+  role="button"
+  tabindex="0"
+  aria-label="Cerrar panel de notificaciones"
+  (click)="closeNotificationsPanel()"
+  (keydown.enter)="closeNotificationsPanel()"
+  (keydown.space)="closeNotificationsPanel()"
+></div>
+
+<aside
+  #notificationsPanel
+  id="notification-feed-panel"
+  class="notification-feed-panel"
+  [class.notification-feed-panel--open]="showNotificationsPanel()"
+  [style.top.px]="notificationsPanelTop()"
+  [style.left.px]="notificationsPanelLeft()"
+  aria-label="Panel de notificaciones"
+>
+  <div class="notification-feed-header">
+    <strong>Notificaciones</strong>
+    <div style="display:flex; gap:6px; align-items:center">
+      <button type="button" style="padding:4px 8px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#334155;font-size:12px;cursor:pointer" (click)="reloadNotifications()">Actualizar</button>
+      <button type="button" style="width:28px;height:28px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#334155;font-size:18px;line-height:1;cursor:pointer" (click)="closeNotificationsPanel()" aria-label="Cerrar panel">&times;</button>
+    </div>
+  </div>
+
+  <div class="notification-feed-body">
+    @if (fileRecordEventsService.loading()) {
+      <div class="notification-feed-loading">Cargando notificaciones...</div>
+    }
+
+    @if (fileRecordEventsService.error()) {
+      <div class="notification-feed-error">{{ fileRecordEventsService.error() }}</div>
+    }
+
+    @if (!fileRecordEventsService.loading() && fileRecordEventsService.events()?.data?.length) {
+      <div class="notification-feed-list">
+        @for (item of fileRecordEventsService.events()!.data; track item.id) {
+          <article class="notification-card" [class.notification-card--error]="item.failureReason || item.failureReasonDescription">
+            <div class="notification-card__top">
+              <span class="notification-card__title">{{ item.eventType }} · {{ item.status }}</span>
+              <span class="notification-card__time">{{ formatEventDate(item.receivedAt) }}</span>
+            </div>
+            <div class="notification-card__file">{{ item.filename }}</div>
+            <div class="notification-card__snippet">{{ eventSnippet(item) }}</div>
+            <div class="notification-card__meta">{{ item.fileType || 'Sin tipo' }} · {{ item.origin || 'Sin origen' }}</div>
+          </article>
+        }
+      </div>
+    }
+
+    @if (!fileRecordEventsService.loading() && !fileRecordEventsService.events()?.data?.length) {
+      <div class="notification-feed-empty">Sin eventos por ahora.</div>
+    }
+  </div>
+</aside>
 
 <section class="realtime-toast-container">
   @if (!notificationsService.connected()) {

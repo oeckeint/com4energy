@@ -27,6 +27,7 @@
           [columnValidation]="service.columnValidation()"
           [clientIds]="service.clientIds()"
           [currentDate]="filters.day"
+          (dayChange)="onDayChange($event)"
         />
       </div>
     </div>

@@ -4,7 +4,11 @@ import { Component, Input } from '@angular/core';
 // Formatea números con formato europeo: miles (.) y redondea hacia arriba (Math.ceil)
 const formatEnergyValue = (value: number | null | undefined): string => {
   if (value === null || value === undefined) return '-';
-  return Math.ceil(value).toLocaleString('es-ES');
+  const rounded = Math.ceil(value);
+  const sign = rounded < 0 ? '-' : '';
+  const digits = Math.abs(rounded).toString();
+  const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${sign}${grouped}`;
 };
 
 interface MeasureMatrixRow {
@@ -124,32 +128,6 @@ interface MeasureColumnValidation {
       </div>
     </div>
 
-    @if (clientIds.length > 0 && !loading) {
-      <div class="mt-3">
-        <button type="button" class="btn btn-link p-0 text-decoration-none" (click)="toggleAuditor()">
-          <span class="me-1">{{ showAuditor ? '▼' : '▶' }}</span>
-          <span class="fw-semibold">Auditor</span>
-        </button>
-
-        @if (showAuditor) {
-          <div class="measure-validation-summary mt-2">
-            @for (clientId of clientIds; track clientId) {
-              <div class="measure-validation-item" [class.is-warning]="(columnValidation[clientId]?.missing ?? 0) > 0">
-                <div class="measure-validation-title">Cliente {{ clientId }}</div>
-                <div class="measure-validation-detail">
-                  {{ columnValidation[clientId]?.present ?? 0 }}/{{ columnValidation[clientId]?.expected ?? expectedFallback }}
-                </div>
-                @if ((columnValidation[clientId]?.missing ?? 0) > 0) {
-                  <div class="measure-validation-missing">&#9888; Faltan {{ columnValidation[clientId]?.missing }}</div>
-                } @else {
-                  <div class="measure-validation-ok">Completo</div>
-                }
-              </div>
-            }
-          </div>
-        }
-      </div>
-    }
   `
 })
 export class MeasureMatrixTableComponent {
@@ -163,15 +141,11 @@ export class MeasureMatrixTableComponent {
   @Input() totalColumnWidth = 120;
   @Input() columnValidation: Record<string, MeasureColumnValidation> = {};
 
-  showAuditor = false;
   hoveredHour: string | null = null;
   hoveredClientId: number | null = null;
   selectedHour: string | null = null;
   selectedClientId: number | null = null;
 
-  toggleAuditor(): void {
-    this.showAuditor = !this.showAuditor;
-  }
 
   onCellHover(hour: string, clientId: number): void {
     this.hoveredHour = hour;

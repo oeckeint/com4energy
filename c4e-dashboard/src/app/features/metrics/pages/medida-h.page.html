@@ -27,6 +27,7 @@
           [columnValidation]="service.columnValidation()"
           [clientIds]="service.clientIds()"
           [currentDate]="filters.day"
+          (dayChange)="onDayChange($event)"
         />
       </div>
     </div>
@@ -41,8 +42,8 @@
       (click)="toggleTool('auditor')"
       [attr.aria-expanded]="activeTool === 'auditor'"
       aria-controls="medida-h-tools-drawer"
-      aria-label="Abrir panel de auditor"
-      title="Auditor"
+      aria-label="Abrir panel de estado de clientes"
+      title="Estado de clientes"
     >
       &#9881;
     </button>
@@ -79,11 +80,22 @@
     </div>
     <div class="measure-h-tools-body">
       @if (activeTool === 'auditor') {
-        <app-measure-auditor-panel
-          [clientIds]="service.clientIds()"
-          [columnValidation]="service.columnValidation()"
-          [currentDate]="filters.day"
-        />
+        <div
+          class="measure-h-tools-stack"
+          [class.measure-h-tools-stack--scrolling]="showStackScrollbar"
+          (scroll)="onToolsStackScroll()"
+        >
+          <app-measure-auditor-panel
+            [clientIds]="service.clientIds()"
+            [columnValidation]="service.columnValidation()"
+            [currentDate]="filters.day"
+          />
+
+          <section class="measure-h-tools-placeholder-card" aria-label="Proximo modulo">
+            <div class="measure-h-tools-placeholder-card-title">Proximo modulo</div>
+            <div class="measure-h-tools-placeholder-card-text">Aqui puedes agregar otro card del sidebar sin afectar el estado de clientes.</div>
+          </section>
+        </div>
       } @else {
         <div class="measure-h-tools-placeholder">Aqui iremos agregando mas herramientas.</div>
       }

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MedidaHService } from '../services/medidas/h/MedidaHService';
 import { MeasureMatrixTableComponent } from '../components/measure-matrix-table.component';
@@ -39,7 +39,7 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
     .measure-h-tools-button {
       width: 32px;
       height: 32px;
-      border: none;
+      border: 1px solid transparent;
       border-radius: 6px;
       background: transparent;
       color: #6b7280;
@@ -47,7 +47,7 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
       line-height: 1;
       display: grid;
       place-items: center;
-      transition: background-color 0.2s ease, color 0.2s ease;
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
     .measure-h-tools-button:hover {
@@ -57,7 +57,20 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
 
     .measure-h-tools-button--active {
       background: #dbeafe;
-      color: #2563eb;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+      box-shadow: inset 0 0 0 1px #93c5fd;
+    }
+
+    .measure-h-tools-button--active:hover {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    .measure-h-tools-button:focus-visible {
+      outline: 2px solid #93c5fd;
+      outline-offset: 1px;
     }
 
     .measure-h-tools-backdrop {
@@ -118,12 +131,71 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
     .measure-h-tools-body {
       flex: 1;
       min-height: 0;
-      padding: 10px;
+      padding: 12px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+
+    .measure-h-tools-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding-right: 8px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      box-sizing: border-box;
+    }
+
+    .measure-h-tools-stack::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .measure-h-tools-stack::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .measure-h-tools-stack::-webkit-scrollbar-thumb {
+      background: transparent;
+      border-radius: 999px;
+    }
+
+    .measure-h-tools-stack--scrolling {
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+    }
+
+    .measure-h-tools-stack--scrolling::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
     }
 
     .measure-h-tools-body app-measure-auditor-panel {
       display: block;
-      height: 100%;
+      height: auto;
+      width: 100%;
+    }
+
+    .measure-h-tools-placeholder-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 12px;
+    }
+
+    .measure-h-tools-placeholder-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+
+    .measure-h-tools-placeholder-card-text {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.35;
     }
 
     .measure-h-tools-placeholder {
@@ -148,16 +220,19 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
     }
   `]
 })
-export class MedidaHPage implements OnInit {
+export class MedidaHPage implements OnInit, OnDestroy {
+  private readonly scrollbarHideDelayMs = 900;
+  private stackScrollbarTimer: ReturnType<typeof setTimeout> | null = null;
   readonly service = inject(MedidaHService);
   activeTool: 'auditor' | 'utilidades' | null = null;
+  showStackScrollbar = false;
 
   get toolsPanelOpen(): boolean {
     return this.activeTool !== null;
   }
 
   get activeToolTitle(): string {
-    if (this.activeTool === 'auditor') return 'Auditor';
+    if (this.activeTool === 'auditor') return 'Estado de clientes';
     if (this.activeTool === 'utilidades') return 'Utilidades';
     return 'Herramientas';
   }
@@ -169,6 +244,13 @@ export class MedidaHPage implements OnInit {
 
   ngOnInit(): void {
     this.applyFilters();
+  }
+
+  ngOnDestroy(): void {
+    if (this.stackScrollbarTimer !== null) {
+      clearTimeout(this.stackScrollbarTimer);
+      this.stackScrollbarTimer = null;
+    }
   }
 
   async onDayChange(newDay: string): Promise<void> {
@@ -193,6 +275,17 @@ export class MedidaHPage implements OnInit {
 
   closeToolsPanel(): void {
     this.activeTool = null;
+  }
+
+  onToolsStackScroll(): void {
+    this.showStackScrollbar = true;
+    if (this.stackScrollbarTimer !== null) {
+      clearTimeout(this.stackScrollbarTimer);
+    }
+    this.stackScrollbarTimer = setTimeout(() => {
+      this.showStackScrollbar = false;
+      this.stackScrollbarTimer = null;
+    }, this.scrollbarHideDelayMs);
   }
 
 
