@@ -1,32 +1,47 @@
 <div class="p-6">
   <h1 class="text-2xl font-bold mb-4">Medida H</h1>
 
-  <div class="measure-split-layout measure-h-top-layout mb-4">
-    <div class="measure-split-left">
-      <app-measure-filters
-        [day]="filters.day"
-        (dayChange)="onDayChange($event)"
-        [clientIdsText]="filters.clientIdsText"
-        (clientIdsTextChange)="filters.clientIdsText = $event"
-        [loading]="service.loading()"
-        [helperText]="'Opcional. Separar IDs por coma (ej: 3366,3367). Sin filtro: muestra todos los clientes.'"
-        (search)="applyFilters()"
-        (clear)="clearFilters()"
-      />
+  <div class="measure-h-top-layout">
+    <div class="measure-h-top-left measure-h-filters-card">
+      <div class="measure-h-top-filters">
+        <app-measure-filters
+            [containerClass]="'mb-0 h-100 measure-filters-container-card'"
+          [splitFieldsIntoCards]="false"
+          [layoutMode]="'top-split'"
+          [showActionButtons]="true"
+          [day]="filters.day"
+          (dayChange)="onDayChange($event)"
+          [clientIdsText]="filters.clientIdsText"
+          (clientIdsTextChange)="filters.clientIdsText = $event"
+          [loading]="service.loading()"
+          [helperText]="'Opcional. Separar IDs por coma (ej: 3366,3367). Sin filtro: muestra todos los clientes.'"
+          (search)="applyFilters()"
+          (clear)="clearFilters()"
+        />
+      </div>
     </div>
 
-    <div class="measure-split-middle">
-      <div class="measure-split-chart-wrap">
+    <div class="measure-h-top-right measure-h-widgets-grid">
+      <div class="measure-h-top-widget">
         <app-measure-completeness-gauge
           [clientIds]="service.clientIds()"
           [columnValidation]="service.columnValidation()"
+          (openAuditorRequested)="openAuditorDefectuosos()"
         />
+      </div>
+
+      <div class="measure-h-top-widget">
         <app-measure-hourly-mini-chart
           [rows]="service.rows()"
           [chartYMax]="2500"
           [columnValidation]="service.columnValidation()"
           [clientIds]="service.clientIds()"
+          [hasData]="service.totalRecords() > 0"
           [currentDate]="filters.day"
+          [showEmptyStateWhenNoData]="true"
+          [emptyStateIcon]="'📊'"
+          [emptyStateTitle]="'Sin datos para graficar'"
+          [emptyStateDescription]="'Selecciona un cliente o rango de fechas con mediciones.'"
           (dayChange)="onDayChange($event)"
         />
       </div>
@@ -89,6 +104,7 @@
             [clientIds]="service.clientIds()"
             [columnValidation]="service.columnValidation()"
             [currentDate]="filters.day"
+            [focusDefectuososTrigger]="auditorFocusTrigger"
           />
 
           <section class="measure-h-tools-placeholder-card" aria-label="Proximo modulo">
@@ -106,26 +122,27 @@
     <div class="alert alert-danger">{{ service.error() }}</div>
   }
 
-  @if (!service.loading() && service.uniqueClients() > 0) {
-    <div class="d-flex align-items-center gap-3 mb-2 text-muted small">
-      <span>📊 <strong>{{ service.uniqueClients() }}</strong> clientes · <strong>{{ service.totalRecords() }}</strong> puntos cargados</span>
-    </div>
-  }
-
-  @if (service.loading()) {
-    <div class="d-flex align-items-center gap-2 mb-3">
-      <div class="spinner-border spinner-border-sm" role="status"></div>
-      <span>Cargando medida H...</span>
-    </div>
-  }
-
   <app-measure-matrix-table
+    class="measure-h-matrix-block"
     [rows]="service.rows()"
     [clientIds]="service.clientIds()"
+    [hasData]="service.totalRecords() > 0"
     [columnValidation]="service.columnValidation()"
     [loading]="service.loading()"
+    [emptyStateTitle]="'No hay datos disponibles'"
+    [emptyStateDescription]="'No se encontraron mediciones para el rango de fechas y cliente seleccionados. Intenta cambiar los filtros o navegar a otro periodo.'"
+    [showDateNavigator]="true"
+    [headerDate]="filters.day"
+    (headerPreviousDayRequested)="shiftTableDay(-1)"
+    (headerNextDayRequested)="shiftTableDay(1)"
+    (headerDateSelected)="onTableDateSelected($event)"
+    (refreshRequested)="applyFilters()"
+    [statusText]="service.uniqueClients() > 0 ? (service.uniqueClients() + ' clientes · ' + service.totalRecords() + ' puntos cargados') : null"
     [expectedFallback]="24"
     [clientColumnMinWidth]="140"
+    [exportMeasureType]="'Medida H'"
+    [exportDate]="filters.day"
+    [exportClientFilterText]="filters.clientIdsText"
   />
 </div>
 

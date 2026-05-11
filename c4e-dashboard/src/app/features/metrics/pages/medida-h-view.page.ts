@@ -14,7 +14,52 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
   templateUrl: './medida-h.page.html',
   styles: [`
     .measure-h-top-layout {
-      grid-template-columns: 1fr 1.5fr;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: stretch;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    app-measure-matrix-table.measure-h-matrix-block {
+      display: block;
+      margin-top: 0.75rem;
+    }
+
+    .measure-h-top-left,
+    .measure-h-top-right {
+      min-width: 0;
+      height: 100%;
+    }
+
+    .measure-h-top-filters {
+      display: block;
+      min-width: 0;
+      height: 100%;
+    }
+
+
+    .measure-h-widgets-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+      gap: 1rem;
+      align-items: stretch;
+      height: 100%;
+    }
+
+    .measure-h-top-widget {
+      display: flex;
+      align-items: stretch;
+      justify-content: flex-start;
+      height: 100%;
+    }
+
+    .measure-h-top-filters app-measure-filters,
+    .measure-h-top-widget app-measure-completeness-gauge,
+    .measure-h-top-widget app-measure-hourly-mini-chart {
+      display: block;
+      width: 100%;
+      height: 100%;
     }
 
     .measure-h-tools-rail {
@@ -207,9 +252,31 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
       font-size: 13px;
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 1200px) {
       .measure-h-top-layout {
         grid-template-columns: 1fr;
+      }
+
+      .measure-h-top-left,
+      .measure-h-top-right {
+        height: auto;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .measure-h-widgets-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+      }
+
+      .measure-h-top-widget {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .measure-h-top-layout {
+        gap: 0.75rem;
       }
 
       .measure-h-tools-rail {
@@ -225,6 +292,7 @@ export class MedidaHPage implements OnInit, OnDestroy {
   private stackScrollbarTimer: ReturnType<typeof setTimeout> | null = null;
   readonly service = inject(MedidaHService);
   activeTool: 'auditor' | 'utilidades' | null = null;
+  auditorFocusTrigger = 0;
   showStackScrollbar = false;
 
   get toolsPanelOpen(): boolean {
@@ -258,15 +326,27 @@ export class MedidaHPage implements OnInit, OnDestroy {
     await this.applyFilters();
   }
 
+  async shiftTableDay(offsetDays: number): Promise<void> {
+    const baseDate = new Date(this.filters.day || this.todayIso());
+    baseDate.setDate(baseDate.getDate() + offsetDays);
+    const nextDay = baseDate.toISOString().slice(0, 10);
+    await this.onDayChange(nextDay);
+  }
+
+  async onTableDateSelected(newDay: string): Promise<void> {
+    await this.onDayChange(newDay);
+  }
+
   async applyFilters(): Promise<void> {
     const clientIds = this.parseClientIds(this.filters.clientIdsText);
     await this.service.fetchMatrix(this.filters.day || this.todayIso(), clientIds);
   }
 
   async clearFilters(): Promise<void> {
-    this.filters.day = this.todayIso();
     this.filters.clientIdsText = '';
-    await this.service.fetchMatrix(this.filters.day, []);
+    const selectedDay = this.filters.day || this.todayIso();
+    this.filters.day = selectedDay;
+    await this.service.fetchMatrix(selectedDay, []);
   }
 
   toggleTool(tool: 'auditor' | 'utilidades'): void {
@@ -275,6 +355,11 @@ export class MedidaHPage implements OnInit, OnDestroy {
 
   closeToolsPanel(): void {
     this.activeTool = null;
+  }
+
+  openAuditorDefectuosos(): void {
+    this.activeTool = 'auditor';
+    this.auditorFocusTrigger += 1;
   }
 
   onToolsStackScroll(): void {
@@ -287,7 +372,6 @@ export class MedidaHPage implements OnInit, OnDestroy {
       this.stackScrollbarTimer = null;
     }, this.scrollbarHideDelayMs);
   }
-
 
   private parseClientIds(raw: string): number[] {
     if (!raw) return [];
@@ -306,4 +390,3 @@ export class MedidaHPage implements OnInit, OnDestroy {
     return new Date().toISOString().slice(0, 10);
   }
 }
-

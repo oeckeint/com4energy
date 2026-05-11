@@ -15,6 +15,7 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
 })
 export class MedidaCchPage implements OnInit {
   readonly service = inject(MedidaCchService);
+  auditorFocusTrigger = 0;
 
   readonly filters = {
     day: this.todayIso(),
@@ -36,11 +37,15 @@ export class MedidaCchPage implements OnInit {
   }
 
   async clearFilters(): Promise<void> {
-    this.filters.day = this.todayIso();
     this.filters.clientIdsText = '';
-    await this.service.fetchMatrix(this.filters.day, []);
+    const selectedDay = this.filters.day || this.todayIso();
+    this.filters.day = selectedDay;
+    await this.service.fetchMatrix(selectedDay, []);
   }
 
+  openAuditorDefectuosos(): void {
+    this.auditorFocusTrigger += 1;
+  }
 
   private parseClientIds(raw: string): number[] {
     if (!raw) return [];
@@ -59,4 +64,3 @@ export class MedidaCchPage implements OnInit {
     return new Date().toISOString().slice(0, 10);
   }
 }
-

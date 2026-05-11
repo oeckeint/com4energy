@@ -20,6 +20,7 @@
         <app-measure-completeness-gauge
           [clientIds]="service.clientIds()"
           [columnValidation]="service.columnValidation()"
+          (openAuditorRequested)="openAuditorDefectuosos()"
         />
         <app-measure-hourly-mini-chart
           [rows]="service.rows()"
@@ -37,6 +38,7 @@
         [clientIds]="service.clientIds()"
         [columnValidation]="service.columnValidation()"
         [currentDate]="filters.day"
+        [focusDefectuososTrigger]="auditorFocusTrigger"
       />
     </div>
   </div>
@@ -46,9 +48,8 @@
   }
 
   @if (service.loading()) {
-    <div class="d-flex align-items-center gap-2 mb-3">
+    <div class="d-flex align-items-center mb-3" aria-live="polite" aria-busy="true">
       <div class="spinner-border spinner-border-sm" role="status"></div>
-      <span>Cargando medida CCH...</span>
     </div>
   }
 
@@ -59,6 +60,10 @@
     [loading]="service.loading()"
     [expectedFallback]="24"
     [clientColumnMinWidth]="180"
+    [exportMeasureType]="'Medida CCH'"
+    [exportDate]="filters.day"
+    [exportClientFilterText]="filters.clientIdsText"
+    (refreshRequested)="applyFilters()"
   />
 </div>
 

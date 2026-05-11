@@ -37,7 +37,7 @@ interface MeasureColumnValidation {
   standalone: true,
   imports: [CommonModule],
   template: `
-    @if (rows.length > 0 && miniChartPoints.length > 0) {
+    @if (hasData && rows.length > 0 && miniChartPoints.length > 0) {
       <div
         class="measure-mini-chart-card measure-mini-chart-card--interactive"
         role="button"
@@ -209,6 +209,12 @@ interface MeasureColumnValidation {
           </div>
         </div>
       }
+    } @else if (showEmptyStateWhenNoData) {
+      <div class="measure-mini-chart-card measure-mini-chart-card--empty" role="status" aria-live="polite">
+        <div class="measure-mini-empty-icon" aria-hidden="true">{{ emptyStateIcon }}</div>
+        <div class="measure-mini-empty-title">{{ emptyStateTitle }}</div>
+        <div class="measure-mini-empty-description">{{ emptyStateDescription }}</div>
+      </div>
     }
   `,
   styles: [`
@@ -261,6 +267,35 @@ interface MeasureColumnValidation {
       color: #6b7280;
       text-align: center;
       text-transform: capitalize;
+    }
+
+    .measure-mini-chart-card--empty {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 0.35rem;
+      padding: 0.75rem;
+    }
+
+    .measure-mini-empty-icon {
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .measure-mini-empty-title {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #344054;
+    }
+
+    .measure-mini-empty-description {
+      font-size: 0.76rem;
+      color: #667085;
+      line-height: 1.35;
+      max-width: 26ch;
     }
 
     .measure-mini-modal-backdrop {
@@ -506,6 +541,11 @@ export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy {
   @Input() columnValidation: Record<string, MeasureColumnValidation> = {};
   @Input() clientIds: number[] = [];
   @Input() currentDate: string | Date | null = null;
+  @Input() hasData = true;
+  @Input() showEmptyStateWhenNoData = false;
+  @Input() emptyStateIcon = '📊';
+  @Input() emptyStateTitle = 'Sin datos para graficar';
+  @Input() emptyStateDescription = 'Selecciona un cliente o rango de fechas con mediciones.';
   @Output() dayChange = new EventEmitter<string>();
 
   miniChartPoints: MiniChartPoint[] = [];

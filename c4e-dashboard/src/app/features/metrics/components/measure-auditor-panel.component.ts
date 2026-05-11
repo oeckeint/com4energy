@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnDestroy } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
 
 interface MeasureColumnValidation {
   expected: number;
@@ -292,15 +292,23 @@ type ClientStatusSubmodule = 'defectuosos' | 'adecuados';
     }
   `]
 })
-export class MeasureAuditorPanelComponent implements OnDestroy {
+export class MeasureAuditorPanelComponent implements OnDestroy, OnChanges {
   private readonly scrollbarHideDelayMs = 900;
   private cardsScrollbarTimer: ReturnType<typeof setTimeout> | null = null;
   @Input() clientIds: number[] = [];
   @Input() columnValidation: Record<string, MeasureColumnValidation> = {};
   @Input() currentDate = new Date().toISOString().slice(0, 10);
+  @Input() focusDefectuososTrigger = 0;
   collapsed = false;
   activeSubmodule: ClientStatusSubmodule = 'defectuosos';
   showCardsScrollbar = false;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (!changes['focusDefectuososTrigger']) {
+      return;
+    }
+    this.openDefectuososView();
+  }
 
   ngOnDestroy(): void {
     if (this.cardsScrollbarTimer !== null) {
@@ -315,6 +323,11 @@ export class MeasureAuditorPanelComponent implements OnDestroy {
 
   setSubmodule(submodule: ClientStatusSubmodule): void {
     this.activeSubmodule = submodule;
+  }
+
+  private openDefectuososView(): void {
+    this.collapsed = false;
+    this.activeSubmodule = 'defectuosos';
   }
 
   onCardsScroll(): void {
@@ -363,4 +376,3 @@ export class MeasureAuditorPanelComponent implements OnDestroy {
     return this.columnValidation[String(clientId)]?.missing ?? 0;
   }
 }
-
