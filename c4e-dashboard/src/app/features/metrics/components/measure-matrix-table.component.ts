@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
 // Formatea números con formato europeo: miles (.) y redondea hacia arriba (Math.ceil)
 const formatEnergyValue = (value: number | null | undefined): string => {
@@ -64,12 +64,6 @@ interface MeasureColumnValidation {
                 <h2 class="measure-matrix-toolbar-title mb-0">Tabla de medidas</h2>
               }
             </div>
-            <div class="measure-matrix-toolbar-side measure-matrix-toolbar-right"></div>
-          </div>
-
-          <div class="measure-matrix-toolbar-row measure-matrix-toolbar-row--actions">
-            <div class="measure-matrix-toolbar-side measure-matrix-toolbar-left"></div>
-            <div class="measure-matrix-toolbar-side measure-matrix-toolbar-center"></div>
             <div class="measure-matrix-toolbar-side measure-matrix-toolbar-right">
               <div class="measure-matrix-actions-top">
                 <button
@@ -82,7 +76,6 @@ interface MeasureColumnValidation {
                 >
                   <span aria-hidden="true">&#x21bb;</span>
                 </button>
-
                 <button
                   type="button"
                   class="btn btn-sm btn-outline-secondary measure-matrix-action-btn"
@@ -93,7 +86,13 @@ interface MeasureColumnValidation {
                   <span aria-hidden="true">&#x1F4E4;</span>
                 </button>
               </div>
+            </div>
+          </div>
 
+          <div class="measure-matrix-toolbar-row measure-matrix-toolbar-row--actions">
+            <div class="measure-matrix-toolbar-side measure-matrix-toolbar-left"></div>
+            <div class="measure-matrix-toolbar-side measure-matrix-toolbar-center"></div>
+            <div class="measure-matrix-toolbar-side measure-matrix-toolbar-right">
               @if (loading || statusText || !hasData) {
                 <div class="measure-matrix-actions-status" aria-live="polite">
                   @if (loading) {
@@ -103,7 +102,11 @@ interface MeasureColumnValidation {
                     </span>
                   } @else if (statusText) {
                     <span class="measure-matrix-status text-muted small">
-                      <span class="text-success" aria-hidden="true">✓</span>
+                      @if (statusWarning) {
+                        <span aria-hidden="true">⚠️</span>
+                      } @else {
+                        <span class="text-success" aria-hidden="true">✓</span>
+                      }
                       <span>{{ statusText }}</span>
                     </span>
                   } @else {
@@ -169,8 +172,9 @@ interface MeasureColumnValidation {
                           'measure-cross-col': isColumnActive(clientId),
                           'measure-cell-selected': isCellSelected(row.hour, clientId)
                         }"
-                        (mouseenter)="onCellHover(row.hour, clientId)"
-                        (click)="selectCell(row.hour, clientId)"
+                        [attr.title]="getCellTitle(row.hour, clientId, getCellValue(row.values, clientId))"
+                        (mouseenter)="onCellHover(row.hour, clientId, getCellValue(row.values, clientId))"
+                        (click)="selectCell(row.hour, clientId, getCellValue(row.values, clientId))"
                       >
                         @if (getCellValue(row.values, clientId) === null) {
                           <span class="measure-missing-mark" title="Registro faltante">&#9888; -</span>
@@ -335,7 +339,7 @@ interface MeasureColumnValidation {
 
   `
 })
-export class MeasureMatrixTableComponent {
+export class MeasureMatrixTableComponent implements OnChanges {
   private readonly weekdayNames = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
   private readonly monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
@@ -344,6 +348,7 @@ export class MeasureMatrixTableComponent {
   @Input() hasData = true;
   @Input() loading = false;
   @Input() statusText: string | null = null;
+  @Input() statusWarning = false;
   @Input() emptyMessage = 'No hay datos para los filtros seleccionados.';
   @Input() emptyStateTitle: string | null = null;
   @Input() emptyStateDescription: string | null = null;
@@ -357,6 +362,7 @@ export class MeasureMatrixTableComponent {
   @Input() exportClientFilterText = '';
   @Input() showDateNavigator = false;
   @Input() headerDate: string | null = null;
+  @Input() cellOriginFetcher: ((hour: string, clientId: number) => Promise<string | null>) | null = null;
 
   @Output() headerPreviousDayRequested = new EventEmitter<void>();
   @Output() headerNextDayRequested = new EventEmitter<void>();
@@ -368,6 +374,17 @@ export class MeasureMatrixTableComponent {
   selectedHour: string | null = null;
   selectedClientId: number | null = null;
   isOptionsModalOpen = false;
+  private readonly cellOriginCache = new Map<string, string | null>();
+  private readonly cellOriginLoading = new Set<string>();
+  private readonly cellOriginError = new Set<string>();
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['headerDate'] || changes['rows'] || changes['clientIds'] || changes['cellOriginFetcher']) {
+      this.cellOriginCache.clear();
+      this.cellOriginLoading.clear();
+      this.cellOriginError.clear();
+    }
+  }
 
   get headerDateDisplay(): string {
     const parsed = this.parseIsoDate(this.headerDate);
@@ -384,7 +401,7 @@ export class MeasureMatrixTableComponent {
   }
 
 
-  onCellHover(hour: string, clientId: number): void {
+  onCellHover(hour: string, clientId: number, value: number | null = null): void {
     this.hoveredHour = hour;
     this.hoveredClientId = clientId;
   }
@@ -392,6 +409,37 @@ export class MeasureMatrixTableComponent {
   clearCellHover(): void {
     this.hoveredHour = null;
     this.hoveredClientId = null;
+  }
+
+  getCellTitle(hour: string, clientId: number, value: number | null): string {
+    if (value === null || value === undefined) {
+      return 'Sin dato para esta celda';
+    }
+
+    if (this.cellOriginFetcher === null) {
+      return 'Origen no disponible';
+    }
+
+    if (!this.isCellSelected(hour, clientId)) {
+      return 'Selecciona la celda para consultar origen del archivo';
+    }
+
+    const key = this.buildCellKey(hour, clientId);
+
+    if (this.cellOriginLoading.has(key)) {
+      return 'Cargando origen del archivo...';
+    }
+
+    if (this.cellOriginError.has(key)) {
+      return 'No se pudo cargar el origen del archivo';
+    }
+
+    if (!this.cellOriginCache.has(key)) {
+      return 'Origen pendiente de consulta';
+    }
+
+    const cached = this.cellOriginCache.get(key);
+    return cached ?? 'Origen no informado';
   }
 
   openOptionsModal(): void {
@@ -479,7 +527,7 @@ export class MeasureMatrixTableComponent {
     globalThis.URL.revokeObjectURL(downloadUrl);
   }
 
-  selectCell(hour: string, clientId: number): void {
+  selectCell(hour: string, clientId: number, value: number | null): void {
     if (this.selectedHour === hour && this.selectedClientId === clientId) {
       this.selectedHour = null;
       this.selectedClientId = null;
@@ -488,6 +536,8 @@ export class MeasureMatrixTableComponent {
 
     this.selectedHour = hour;
     this.selectedClientId = clientId;
+
+    this.loadCellOrigin(hour, clientId, value);
   }
 
   isRowActive(hour: string): boolean {
@@ -740,6 +790,34 @@ export class MeasureMatrixTableComponent {
     }
 
     return value;
+  }
+
+  private buildCellKey(hour: string, clientId: number): string {
+    return `${hour}|${clientId}`;
+  }
+
+  private loadCellOrigin(hour: string, clientId: number, value: number | null): void {
+    if (value === null || value === undefined || this.cellOriginFetcher === null) {
+      return;
+    }
+
+    const key = this.buildCellKey(hour, clientId);
+    if (this.cellOriginCache.has(key) || this.cellOriginLoading.has(key)) {
+      return;
+    }
+
+    this.cellOriginLoading.add(key);
+    this.cellOriginFetcher(hour, clientId)
+      .then((tooltip) => {
+        this.cellOriginCache.set(key, tooltip);
+        this.cellOriginError.delete(key);
+      })
+      .catch(() => {
+        this.cellOriginError.add(key);
+      })
+      .finally(() => {
+        this.cellOriginLoading.delete(key);
+      });
   }
 }
 

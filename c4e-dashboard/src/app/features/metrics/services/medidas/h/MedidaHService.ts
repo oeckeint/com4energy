@@ -17,6 +17,14 @@ interface MedidaHMatrixRow {
   values: Record<string, number | null>;
 }
 
+export interface MedidaHCellOriginsResponse {
+  clienteId: number;
+  hora: number;
+  totalRegistros: number;
+  origenesDistintos: number;
+  origenes: string[];
+}
+
 interface MedidaColumnValidation {
   expected: number;
   present: number;
@@ -44,6 +52,16 @@ export class MedidaHService {
     readonly columnValidation = this.columnValidationSignal.asReadonly();
     readonly totalRecords = this.totalRecordsSignal.asReadonly();
     readonly uniqueClients = this.uniqueClientsSignal.asReadonly();
+
+    /** Suma de registros presentes en todos los clientes visibles */
+    readonly totalPresent = computed(() =>
+        Object.values(this.columnValidationSignal()).reduce((sum, v) => sum + v.present, 0)
+    );
+
+    /** Suma de registros esperados en todos los clientes visibles (24 × nClientes para H) */
+    readonly totalExpected = computed(() =>
+        Object.values(this.columnValidationSignal()).reduce((sum, v) => sum + v.expected, 0)
+    );
 
     private rawMeasurementsSignal = signal<MedidaH[]>([]);
     private currentPageSignal = signal(0);
@@ -73,13 +91,19 @@ export class MedidaHService {
                 this.http.get<MedidaHHourlyPoint[]>(`${this.API_MEDIDA_H_PATH}/matrix?date=${dayIso}`)
             );
 
-            this.totalRecordsSignal.set(points.length);
-
             const allClientIds = this.extractClientIdsFromPoints(points);
-            this.uniqueClientsSignal.set(allClientIds.length);
 
             // Si hay filtro de clientes, usar solo esos; si no, mostrar todos
             const finalClientIds = normalizedClientIds.length > 0 ? normalizedClientIds : allClientIds;
+
+            // Filtrar los puntos al conjunto visible para que los contadores coincidan con la vista
+            const visiblePoints = normalizedClientIds.length > 0
+                ? points.filter(p => normalizedClientIds.includes(Number(p.clienteId)))
+                : points;
+
+            this.totalRecordsSignal.set(visiblePoints.length);
+            this.uniqueClientsSignal.set(finalClientIds.length);
+
             this.clientIdsSignal.set(finalClientIds);
 
             const rows = this.buildRowsFromPoints(finalClientIds, points);
@@ -95,6 +119,14 @@ export class MedidaHService {
         } finally {
             this.loadingSignal.set(false);
         }
+    }
+
+    async fetchCellOrigins(dayIso: string, clientId: number, hour: number): Promise<MedidaHCellOriginsResponse> {
+        return await firstValueFrom(
+            this.http.get<MedidaHCellOriginsResponse>(
+                `${this.API_MEDIDA_H_PATH}/cell-origins?date=${dayIso}&clientId=${clientId}&hour=${hour}`
+            )
+        );
     }
 
     private extractClientIdsFromPoints(points: MedidaHHourlyPoint[]): number[] {

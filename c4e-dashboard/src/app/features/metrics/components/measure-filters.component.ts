@@ -14,7 +14,7 @@ import { FormsModule } from '@angular/forms';
             <section class="card rounded-3 measure-filters-split-card">
               <div class="card-body measure-filters-split-card-body">
                 <div class="measure-calendar-title-row">
-                  <label class="form-label mb-0">Fecha</label>
+                  <label class="form-label mb-0">Calendario</label>
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-secondary measure-calendar-today-btn"
@@ -146,7 +146,7 @@ import { FormsModule } from '@angular/forms';
             </section>
           </div>
         } @else {
-          <div class="row g-3 align-items-end">
+          <div class="row g-3 align-items-center">
             <div class="col-md-3">
               <div class="measure-filter-field-shell" [ngClass]="{ 'card shadow-sm rounded-3 h-100': splitFieldsIntoCards }">
                 <div [class]="splitFieldsIntoCards ? 'card-body py-2 px-3' : ''">
@@ -424,7 +424,7 @@ export class MeasureFiltersComponent implements OnChanges {
   @Input() day = '';
   @Input() clientIdsText = '';
   @Input() loading = false;
-  @Input() clientPlaceholder = '34133, 55221';
+  @Input() clientPlaceholder = 'IDs separados por coma';
   @Input() helperText = 'Opcional. Separar IDs por coma; vacio = todos los clientes.';
   @Input() splitFieldsIntoCards = false;
   @Input() layoutMode: 'default' | 'top-split' = 'default';

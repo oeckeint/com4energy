@@ -6,6 +6,7 @@
   border-radius: 0.75rem;
   background: #fff;
   overflow: hidden;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05);
 }
 
 .measure-matrix-card {
@@ -64,6 +65,7 @@
   gap: 0.5rem;
   flex-direction: column;
   align-items: flex-end;
+  justify-content: center;
 }
 
 .measure-matrix-actions-top {
@@ -166,6 +168,8 @@
   background: #f9fafb;
   border-color: #d0d5dd;
   color: #98a2b3;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  transition: box-shadow 0.16s ease, transform 0.16s ease, background-color 0.16s ease, color 0.16s ease;
 }
 
 .measure-matrix-action-btn > span {
@@ -178,6 +182,8 @@
   background: #f2f4f7;
   border-color: #d0d5dd;
   color: #667085;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.16);
+  transform: translateY(-1px);
 }
 
 .measure-options-modal-backdrop {
@@ -659,7 +665,7 @@
   border: 1px solid #e4e7ec;
   border-radius: 10px !important;
   background: #ffffff;
-  box-shadow: none !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05) !important;
 }
 
 .measure-gauge-card,

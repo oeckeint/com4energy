@@ -228,6 +228,7 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
       border-radius: 8px;
       background: #ffffff;
       padding: 12px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05);
     }
 
     .measure-h-tools-placeholder-card-title {
@@ -295,6 +296,23 @@ export class MedidaHPage implements OnInit, OnDestroy {
   auditorFocusTrigger = 0;
   showStackScrollbar = false;
 
+  get statusLabel(): string | null {
+    const clients = this.service.uniqueClients();
+    if (clients === 0 || this.service.totalRecords() === 0) return null;
+    const clientLabel = clients === 1 ? 'cliente' : 'clientes';
+    const present = this.service.totalPresent();
+    const expected = this.service.totalExpected();
+    return `${clients} ${clientLabel} · ${present}/${expected} registros`;
+  }
+
+  get statusHasDiscrepancy(): boolean {
+    if (!this.statusLabel) {
+      return false;
+    }
+
+    return this.service.totalPresent() < this.service.totalExpected();
+  }
+
   get toolsPanelOpen(): boolean {
     return this.activeTool !== null;
   }
@@ -309,6 +327,9 @@ export class MedidaHPage implements OnInit, OnDestroy {
     day: this.todayIso(),
     clientIdsText: ''
   };
+
+  readonly cellOriginFetcher = (hour: string, clientId: number): Promise<string | null> =>
+    this.fetchCellOriginTooltip(hour, clientId);
 
   ngOnInit(): void {
     this.applyFilters();
@@ -384,6 +405,45 @@ export class MedidaHPage implements OnInit, OnDestroy {
       .filter((id) => Number.isInteger(id) && id > 0);
 
     return Array.from(new Set(parsed));
+  }
+
+  private async fetchCellOriginTooltip(hourLabel: string, clientId: number): Promise<string | null> {
+    const selectedDay = this.filters.day || this.todayIso();
+    const parsedHour = this.parseHourLabel(hourLabel);
+    if (parsedHour === null) {
+      return 'Origen no disponible';
+    }
+
+    try {
+      const response = await this.service.fetchCellOrigins(selectedDay, clientId, parsedHour);
+      const sourceCount = response.origenesDistintos ?? 0;
+      const sources = response.origenes ?? [];
+
+      if (sourceCount <= 0 || sources.length === 0) {
+        return 'Origen no informado';
+      }
+
+      if (sourceCount === 1) {
+        return `Origen: ${sources[0]}`;
+      }
+
+      const preview = sources.slice(0, 3).join(', ');
+      const remaining = Math.max(sourceCount - 3, 0);
+      const extra = remaining > 0 ? ` +${remaining} mas` : '';
+      return `Origenes (${sourceCount}): ${preview}${extra}`;
+    } catch {
+      return 'No se pudo cargar el origen del archivo';
+    }
+  }
+
+  private parseHourLabel(hourLabel: string): number | null {
+    const match = hourLabel.match(/^(\d{2}):\d{2}$/);
+    if (!match) {
+      return null;
+    }
+
+    const hour = Number(match[1]);
+    return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : null;
   }
 
   private todayIso(): string {

@@ -15,31 +15,40 @@ interface MeasureColumnValidation {
   template: `
     <div
       class="measure-gauge-card"
-      role="button"
-      tabindex="0"
-      aria-label="Abrir estado de clientes en defectuosos"
+      [class.measure-gauge-card--empty]="!hasGraphData"
+      [attr.role]="hasGraphData ? 'button' : 'status'"
+      [attr.tabindex]="hasGraphData ? '0' : null"
+      [attr.aria-label]="hasGraphData ? 'Abrir estado de clientes en defectuosos' : 'Sin datos para graficar'"
       (click)="requestOpenAuditor()"
       (keydown.enter)="requestOpenAuditor()"
       (keydown.space)="requestOpenAuditor(); $event.preventDefault()"
     >
-      <div class="measure-gauge-title">
-        Estado clientes <span class="status-emoji" [attr.title]="statusTooltip">{{ statusEmoji }}</span>
-      </div>
+      @if (!hasGraphData) {
+        <div class="measure-gauge-empty" aria-live="polite">
+          <div class="measure-gauge-empty-icon" aria-hidden="true">📊</div>
+          <div class="measure-gauge-empty-title">Sin datos para graficar</div>
+          <div class="measure-gauge-empty-description">Selecciona un cliente o rango de fechas con mediciones.</div>
+        </div>
+      } @else {
+        <div class="measure-gauge-title">
+          Estado clientes <span class="status-emoji" [attr.title]="statusTooltip">{{ statusEmoji }}</span>
+        </div>
 
-      <svg viewBox="0 0 220 130" class="measure-gauge-svg" role="img" aria-label="Clientes completos vs incompletos">
-        <path [attr.d]="fullArcPath" class="measure-gauge-track" />
-        <path [attr.d]="detailArcPath" class="measure-gauge-detail" />
-        <path [attr.d]="okArcPath" class="measure-gauge-ok" />
+        <svg viewBox="0 0 220 130" class="measure-gauge-svg" role="img" aria-label="Clientes completos vs incompletos">
+          <path [attr.d]="fullArcPath" class="measure-gauge-track" />
+          <path [attr.d]="detailArcPath" class="measure-gauge-detail" />
+          <path [attr.d]="okArcPath" class="measure-gauge-ok" />
 
-        <text x="110" y="78" text-anchor="middle" class="measure-gauge-center">{{ defectiveClients }}</text>
-        <text x="110" y="95" text-anchor="middle" class="measure-gauge-sub">Defectos</text>
-      </svg>
+          <text x="110" y="78" text-anchor="middle" class="measure-gauge-center">{{ defectiveClients }}</text>
+          <text x="110" y="95" text-anchor="middle" class="measure-gauge-sub">Defectos</text>
+        </svg>
 
-      <div class="measure-gauge-metric" [attr.title]="'Total clientes / con detalle'">
-        <span class="metric-value" [attr.data-tooltip]="'Total clientes / clientes con detalle'">
-          {{ totalClients }} / {{ detailedClients }}
-        </span>
-      </div>
+        <div class="measure-gauge-metric" [attr.title]="'Total clientes / con detalle'">
+          <span class="metric-value" [attr.data-tooltip]="'Total clientes / clientes con detalle'">
+            {{ totalClients }} / {{ detailedClients }}
+          </span>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -49,13 +58,13 @@ interface MeasureColumnValidation {
       position: relative;
     }
 
-    .measure-gauge-card:hover {
+    .measure-gauge-card:not(.measure-gauge-card--empty):hover {
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
       border-color: #bfdbfe;
     }
 
-    .measure-gauge-card:hover::after {
+    .measure-gauge-card:not(.measure-gauge-card--empty):hover::after {
       content: 'Haz clic para ver defectuosos';
       position: absolute;
       bottom: -28px;
@@ -75,6 +84,10 @@ interface MeasureColumnValidation {
       outline: 2px solid #60a5fa;
       outline-offset: 2px;
       box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.35);
+    }
+
+    .measure-gauge-card--empty {
+      cursor: default;
     }
 
     .measure-gauge-title {
@@ -121,6 +134,35 @@ interface MeasureColumnValidation {
       border-top-color: rgba(0, 0, 0, 0.8);
       z-index: 1000;
     }
+
+    .measure-gauge-empty {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 0.35rem;
+      padding: 0.75rem;
+    }
+
+    .measure-gauge-empty-icon {
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .measure-gauge-empty-title {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #344054;
+    }
+
+    .measure-gauge-empty-description {
+      font-size: 0.76rem;
+      line-height: 1.35;
+      color: #667085;
+      max-width: 26ch;
+    }
   `]
 })
 export class MeasureCompletenessGaugeComponent {
@@ -129,6 +171,10 @@ export class MeasureCompletenessGaugeComponent {
   @Output() openAuditorRequested = new EventEmitter<void>();
 
   requestOpenAuditor(): void {
+    if (!this.hasGraphData) {
+      return;
+    }
+
     this.openAuditorRequested.emit();
   }
 
@@ -142,6 +188,14 @@ export class MeasureCompletenessGaugeComponent {
 
   get defectiveClients(): number {
     return this.detailedClients;
+  }
+
+  get totalPresentRecords(): number {
+    return this.clientIds.reduce((sum, clientId) => sum + (this.columnValidation[String(clientId)]?.present ?? 0), 0);
+  }
+
+  get hasGraphData(): boolean {
+    return this.totalPresentRecords > 0;
   }
 
   get okClients(): number {

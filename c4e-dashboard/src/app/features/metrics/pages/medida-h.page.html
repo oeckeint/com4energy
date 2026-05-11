@@ -1,5 +1,5 @@
 <div class="p-6">
-  <h1 class="text-2xl font-bold mb-4">Medida H</h1>
+  <h1 class="text-2xl font-bold mb-4">Medida Horaria</h1>
 
   <div class="measure-h-top-layout">
     <div class="measure-h-top-left measure-h-filters-card">
@@ -133,11 +133,13 @@
     [emptyStateDescription]="'No se encontraron mediciones para el rango de fechas y cliente seleccionados. Intenta cambiar los filtros o navegar a otro periodo.'"
     [showDateNavigator]="true"
     [headerDate]="filters.day"
+    [cellOriginFetcher]="cellOriginFetcher"
     (headerPreviousDayRequested)="shiftTableDay(-1)"
     (headerNextDayRequested)="shiftTableDay(1)"
     (headerDateSelected)="onTableDateSelected($event)"
     (refreshRequested)="applyFilters()"
-    [statusText]="service.uniqueClients() > 0 ? (service.uniqueClients() + ' clientes · ' + service.totalRecords() + ' puntos cargados') : null"
+    [statusText]="statusLabel"
+    [statusWarning]="statusHasDiscrepancy"
     [expectedFallback]="24"
     [clientColumnMinWidth]="140"
     [exportMeasureType]="'Medida H'"
