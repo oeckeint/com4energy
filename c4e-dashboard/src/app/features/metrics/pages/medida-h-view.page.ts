@@ -1,11 +1,13 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MedidaHService } from '../services/medidas/h/MedidaHService';
-import { MeasureMatrixTableComponent } from '../components/measure-matrix-table.component';
+import { MeasureActiveFilterPill, MeasureMatrixTableComponent } from '../components/measure-matrix-table.component';
 import { MeasureFiltersComponent } from '../components/measure-filters.component';
 import { MeasureHourlyMiniChartComponent } from '../components/measure-hourly-mini-chart.component';
 import { MeasureCompletenessGaugeComponent } from '../components/measure-completeness-gauge.component';
 import { MeasureAuditorPanelComponent } from '../components/measure-auditor-panel.component';
+
+const HOUR_LABEL_REGEX = /^(\d{2}):\d{2}$/;
 
 @Component({
   selector: 'app-medida-h-page',
@@ -100,19 +102,6 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
       color: #334155;
     }
 
-    .measure-h-tools-button--active {
-      background: #dbeafe;
-      color: #1d4ed8;
-      border-color: #bfdbfe;
-      box-shadow: inset 0 0 0 1px #93c5fd;
-    }
-
-    .measure-h-tools-button--active:hover {
-      background: #dbeafe;
-      color: #1d4ed8;
-      border-color: #bfdbfe;
-    }
-
     .measure-h-tools-button:focus-visible {
       outline: 2px solid #93c5fd;
       outline-offset: 1px;
@@ -126,11 +115,6 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
       pointer-events: none;
       transition: opacity 0.2s ease;
       z-index: 1398;
-    }
-
-    .measure-h-tools-backdrop--open {
-      opacity: 1;
-      pointer-events: auto;
     }
 
     .measure-h-tools-drawer {
@@ -147,10 +131,6 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
       z-index: 1401;
       display: flex;
       flex-direction: column;
-    }
-
-    .measure-h-tools-drawer--open {
-      transform: translateX(0);
     }
 
     .measure-h-tools-header {
@@ -206,15 +186,6 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
     .measure-h-tools-stack::-webkit-scrollbar-thumb {
       background: transparent;
       border-radius: 999px;
-    }
-
-    .measure-h-tools-stack--scrolling {
-      scrollbar-width: thin;
-      scrollbar-color: #cbd5e1 transparent;
-    }
-
-    .measure-h-tools-stack--scrolling::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
     }
 
     .measure-h-tools-body app-measure-auditor-panel {
@@ -291,6 +262,13 @@ import { MeasureAuditorPanelComponent } from '../components/measure-auditor-pane
 export class MedidaHPage implements OnInit, OnDestroy {
   private readonly scrollbarHideDelayMs = 900;
   private stackScrollbarTimer: ReturnType<typeof setTimeout> | null = null;
+  calendarSyncToken = 0;
+  private appliedFilterSnapshot = {
+    clientIdsKey: '',
+    clientIdsDisplay: '',
+    tarifa: '',
+    tarifaDisplay: ''
+  };
   readonly service = inject(MedidaHService);
   activeTool: 'auditor' | 'utilidades' | null = null;
   auditorFocusTrigger = 0;
@@ -313,6 +291,38 @@ export class MedidaHPage implements OnInit, OnDestroy {
     return this.service.totalPresent() < this.service.totalExpected();
   }
 
+  get activeFilterPills(): MeasureActiveFilterPill[] {
+    const parts: MeasureActiveFilterPill[] = [];
+
+    const tarifa = this.appliedFilterSnapshot.tarifaDisplay;
+    if (tarifa) {
+      parts.push({ key: 'tarifa', label: `Tarifa: ${tarifa}` });
+    }
+
+    const appliedClientIds = this.appliedFilterSnapshot.clientIdsKey
+      ? this.appliedFilterSnapshot.clientIdsKey.split(',').filter((token) => token.length > 0)
+      : [];
+    if (appliedClientIds.length > 0) {
+      const clientLabel = appliedClientIds.length <= 3
+        ? this.appliedFilterSnapshot.clientIdsDisplay
+        : `${appliedClientIds.length} clientes filtrados`;
+      parts.push({ key: 'clientes', label: appliedClientIds.length <= 3 ? `Clientes: ${clientLabel}` : clientLabel });
+    }
+
+    return parts;
+  }
+
+  get hasPendingSearchChanges(): boolean {
+    return this.normalizeClientFilterText(this.filters.clientIdsText) !== this.appliedFilterSnapshot.clientIdsKey
+      || this.normalizeTarifa(this.filters.selectedTarifa) !== this.appliedFilterSnapshot.tarifa
+      || this.normalizeTarifa(this.filters.selectedTarifa) !== this.appliedFilterSnapshot.tarifaDisplay;
+  }
+
+  get hasActiveFilters(): boolean {
+    return this.normalizeClientFilterText(this.filters.clientIdsText).length > 0
+      || this.normalizeTarifa(this.filters.selectedTarifa).length > 0;
+  }
+
   get toolsPanelOpen(): boolean {
     return this.activeTool !== null;
   }
@@ -325,14 +335,22 @@ export class MedidaHPage implements OnInit, OnDestroy {
 
   readonly filters = {
     day: this.todayIso(),
-    clientIdsText: ''
+    clientIdsText: '',
+    selectedTarifa: ''
   };
 
   readonly cellOriginFetcher = (hour: string, clientId: number): Promise<string | null> =>
     this.fetchCellOriginTooltip(hour, clientId);
 
   ngOnInit(): void {
-    this.applyFilters();
+    void this.initializePageData();
+  }
+
+  private async initializePageData(): Promise<void> {
+    await Promise.all([
+      this.service.fetchTarifas(),
+      this.applyFilters()
+    ]);
   }
 
   ngOnDestroy(): void {
@@ -358,16 +376,56 @@ export class MedidaHPage implements OnInit, OnDestroy {
     await this.onDayChange(newDay);
   }
 
+  focusCalendarOnCurrentTableDay(): void {
+    this.calendarSyncToken += 1;
+  }
+
+  async onTarifaChange(tarifa: string): Promise<void> {
+    this.filters.selectedTarifa = tarifa;
+    await this.applyFilters();
+  }
+
+  async onActiveFilterRemoved(filterKey: 'tarifa' | 'clientes'): Promise<void> {
+    if (filterKey === 'tarifa') {
+      if (!this.filters.selectedTarifa) {
+        return;
+      }
+      this.filters.selectedTarifa = '';
+      await this.applyFilters();
+      return;
+    }
+
+    if (!this.filters.clientIdsText.trim()) {
+      return;
+    }
+
+    this.filters.clientIdsText = '';
+    await this.applyFilters();
+  }
+
   async applyFilters(): Promise<void> {
     const clientIds = this.parseClientIds(this.filters.clientIdsText);
-    await this.service.fetchMatrix(this.filters.day || this.todayIso(), clientIds);
+    await this.service.fetchMatrix(
+      this.filters.day || this.todayIso(),
+      clientIds,
+      this.filters.selectedTarifa
+    );
+
+    if (!this.service.error()) {
+      this.captureAppliedFilterSnapshot();
+    }
   }
 
   async clearFilters(): Promise<void> {
     this.filters.clientIdsText = '';
+    this.filters.selectedTarifa = '';
     const selectedDay = this.filters.day || this.todayIso();
     this.filters.day = selectedDay;
     await this.service.fetchMatrix(selectedDay, []);
+
+    if (!this.service.error()) {
+      this.captureAppliedFilterSnapshot();
+    }
   }
 
   toggleTool(tool: 'auditor' | 'utilidades'): void {
@@ -407,6 +465,27 @@ export class MedidaHPage implements OnInit, OnDestroy {
     return Array.from(new Set(parsed));
   }
 
+  private captureAppliedFilterSnapshot(): void {
+    this.appliedFilterSnapshot = {
+      clientIdsKey: this.normalizeClientFilterText(this.filters.clientIdsText),
+      clientIdsDisplay: this.normalizeClientFilterDisplay(this.filters.clientIdsText),
+      tarifa: this.normalizeTarifa(this.filters.selectedTarifa),
+      tarifaDisplay: this.normalizeTarifa(this.filters.selectedTarifa)
+    };
+  }
+
+  private normalizeClientFilterText(raw: string): string {
+    return this.parseClientIds(raw).sort((a, b) => a - b).join(',');
+  }
+
+  private normalizeClientFilterDisplay(raw: string): string {
+    return this.parseClientIds(raw).join(', ');
+  }
+
+  private normalizeTarifa(tarifa: string): string {
+    return tarifa?.trim() ?? '';
+  }
+
   private async fetchCellOriginTooltip(hourLabel: string, clientId: number): Promise<string | null> {
     const selectedDay = this.filters.day || this.todayIso();
     const parsedHour = this.parseHourLabel(hourLabel);
@@ -437,7 +516,7 @@ export class MedidaHPage implements OnInit, OnDestroy {
   }
 
   private parseHourLabel(hourLabel: string): number | null {
-    const match = hourLabel.match(/^(\d{2}):\d{2}$/);
+    const match = HOUR_LABEL_REGEX.exec(hourLabel);
     if (!match) {
       return null;
     }
@@ -449,4 +528,5 @@ export class MedidaHPage implements OnInit, OnDestroy {
   private todayIso(): string {
     return new Date().toISOString().slice(0, 10);
   }
+
 }

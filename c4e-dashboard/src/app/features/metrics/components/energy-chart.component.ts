@@ -133,7 +133,6 @@ export class EnergyChartComponent {
     });
   }
 
-  // computed chart payload based on service.consumptionData
   chartData = computed(() => {
     const points = this.service.consumptionData();
     const datasets: any[] = [

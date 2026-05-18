@@ -1,9 +1,6 @@
-import { computed, inject, Injectable, signal } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
-import { firstValueFrom } from "rxjs";
-
-import { MedidaH } from "../../../models/medidas/h/MedidaH";
-import { MedidaHConsumptionPoint } from "../../../models/medidas/h/MedidaHConsumptionPoint";
+import {computed, inject, Injectable, signal} from "@angular/core";
+import {HttpClient} from "@angular/common/http";
+import {firstValueFrom} from "rxjs";
 
 /** Respuesta del endpoint /matrix: una fila por (cliente, hora) ya agregada en BD */
 interface MedidaHHourlyPoint {
@@ -44,6 +41,7 @@ export class MedidaHService {
     private readonly columnValidationSignal = signal<Record<string, MedidaColumnValidation>>({});
     private readonly totalRecordsSignal = signal(0);
     private readonly uniqueClientsSignal = signal(0);
+    private readonly tarifasSignal = signal<string[]>([]);
 
     readonly rows = this.rowsSignal.asReadonly();
     readonly clientIds = this.clientIdsSignal.asReadonly();
@@ -52,6 +50,7 @@ export class MedidaHService {
     readonly columnValidation = this.columnValidationSignal.asReadonly();
     readonly totalRecords = this.totalRecordsSignal.asReadonly();
     readonly uniqueClients = this.uniqueClientsSignal.asReadonly();
+    readonly tarifas = this.tarifasSignal.asReadonly();
 
     /** Suma de registros presentes en todos los clientes visibles */
     readonly totalPresent = computed(() =>
@@ -63,32 +62,33 @@ export class MedidaHService {
         Object.values(this.columnValidationSignal()).reduce((sum, v) => sum + v.expected, 0)
     );
 
-    private rawMeasurementsSignal = signal<MedidaH[]>([]);
-    private currentPageSignal = signal(0);
-
-    rawMeasurements = this.rawMeasurementsSignal.asReadonly();
-    currentPage = this.currentPageSignal.asReadonly();
-
-    consumptionData = computed(() =>
-        this.rawMeasurements().map(m => this.transformMedidaToDataPoint(m))
-    );
 
     /**
-     * Carga la matriz de medidas H para el día dado usando el endpoint /matrix
+   * Carga la matriz de medidas H para el día dado usando el endpoint /matrix
      * que hace GROUP BY en base de datos → una sola petición, sin paginación.
      *
      * Si se pasan clientIds, filtra para mostrar solo esas columnas.
-     * Si no, muestra todos los clientes del día.
+     * Si se pasa tarifa, filtra en backend para mostrar solo clientes con esa tarifa.
+     * Si no se pasan filtros, muestra todos los clientes del día.
      */
-    async fetchMatrix(dayIso: string, clientIds: number[]): Promise<void> {
+    async fetchMatrix(dayIso: string, clientIds: number[], tarifa?: string): Promise<void> {
         this.loadingSignal.set(true);
         this.errorSignal.set(null);
 
         const normalizedClientIds = this.normalizeClientIds(clientIds);
 
         try {
+            // Construir URL con parámetros opcionales
+            let url = `${this.API_MEDIDA_H_PATH}/matrix?date=${dayIso}`;
+            if (tarifa?.trim()) {
+                url += `&tarifa=${encodeURIComponent(tarifa.trim())}`;
+            }
+            for (const clientId of normalizedClientIds) {
+                url += `&clientIds=${clientId}`;
+            }
+
             const points = await firstValueFrom(
-                this.http.get<MedidaHHourlyPoint[]>(`${this.API_MEDIDA_H_PATH}/matrix?date=${dayIso}`)
+                this.http.get<MedidaHHourlyPoint[]>(url)
             );
 
             const allClientIds = this.extractClientIdsFromPoints(points);
@@ -96,12 +96,8 @@ export class MedidaHService {
             // Si hay filtro de clientes, usar solo esos; si no, mostrar todos
             const finalClientIds = normalizedClientIds.length > 0 ? normalizedClientIds : allClientIds;
 
-            // Filtrar los puntos al conjunto visible para que los contadores coincidan con la vista
-            const visiblePoints = normalizedClientIds.length > 0
-                ? points.filter(p => normalizedClientIds.includes(Number(p.clienteId)))
-                : points;
-
-            this.totalRecordsSignal.set(visiblePoints.length);
+            // Con clientIds en querystring, el backend ya devuelve el subconjunto solicitado.
+          this.totalRecordsSignal.set(points.length);
             this.uniqueClientsSignal.set(finalClientIds.length);
 
             this.clientIdsSignal.set(finalClientIds);
@@ -129,6 +125,18 @@ export class MedidaHService {
         );
     }
 
+    async fetchTarifas(): Promise<void> {
+        try {
+            const result = await firstValueFrom(this.http.get<string[]>(`/api/v1/tarifas`));
+            const normalized = Array.from(
+                new Set((result ?? []).map(item => item?.trim()).filter((item): item is string => !!item))
+            ).sort((a, b) => a.localeCompare(b, 'es'));
+            this.tarifasSignal.set(normalized);
+        } catch {
+            this.tarifasSignal.set([]);
+        }
+    }
+
     private extractClientIdsFromPoints(points: MedidaHHourlyPoint[]): number[] {
         const ids = new Set(points.map(p => Number(p.clienteId)).filter(id => id > 0));
         return Array.from(ids).sort((a, b) => a - b);
@@ -148,7 +156,7 @@ export class MedidaHService {
             const val = p.totalActent !== null && p.totalActent !== undefined ? Number(p.totalActent) : null;
             if (!Number.isFinite(val) || val === null) continue;
             if (!index.has(clientId)) index.set(clientId, new Map());
-            index.get(clientId)!.set(Number(p.hora), val as number);
+            index.get(clientId)!.set(Number(p.hora), val);
         }
 
         return hours.map((hourLabel, hourIdx) => {
@@ -182,17 +190,4 @@ export class MedidaHService {
         return Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`);
     }
 
-    private transformMedidaToDataPoint(medida: MedidaH): MedidaHConsumptionPoint {
-        const fecha = new Date(medida.fecha);
-        return {
-            hour: this.formatHour(fecha),
-            consumption: medida.actent,
-            date: fecha,
-            quality: medida.qactent
-        };
-    }
-
-    private formatHour(date: Date): string {
-        return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    }
 }

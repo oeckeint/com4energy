@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+
+const ISO_DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 @Component({
   selector: 'app-measure-filters',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule],
   template: `
     <div [class]="containerClass">
       <div class="card-body">
@@ -42,25 +43,25 @@ import { FormsModule } from '@angular/forms';
 
                   <select
                     class="form-select form-select-sm measure-calendar-month-select"
-                    [ngModel]="viewMonth"
-                    (ngModelChange)="onMonthChanged($event)"
+                    [value]="viewMonth"
+                    (change)="onMonthChanged($any($event.target).value)"
                     [disabled]="loading"
                     aria-label="Mes"
                   >
                     @for (month of monthNames; track month.value) {
-                      <option [ngValue]="month.value">{{ month.label }}</option>
+                      <option [value]="month.value">{{ month.label }}</option>
                     }
                   </select>
 
                   <select
                     class="form-select form-select-sm measure-calendar-year-select"
-                    [ngModel]="viewYear"
-                    (ngModelChange)="onYearChanged($event)"
+                    [value]="viewYear"
+                    (change)="onYearChanged($any($event.target).value)"
                     [disabled]="loading"
                     aria-label="Ano"
                   >
                     @for (year of yearOptions; track year) {
-                      <option [ngValue]="year">{{ formatYearShort(year) }}</option>
+                      <option [value]="year">{{ year }}</option>
                     }
                   </select>
 
@@ -84,71 +85,87 @@ import { FormsModule } from '@angular/forms';
 
                 <div class="measure-calendar-grid" role="grid" aria-label="Calendario mensual">
                   @for (cell of monthCells; track $index) {
-                    @if (cell === null) {
-                      <span class="measure-calendar-day-placeholder" aria-hidden="true"></span>
-                    } @else {
-                      <button
-                        type="button"
-                        class="measure-calendar-day"
-                        [class.is-selected]="isSelectedDate(cell)"
-                        [class.is-today]="isTodayDate(cell)"
-                        [disabled]="loading"
-                        (click)="onCalendarDateSelected(cell)"
-                      >
-                        {{ cell.getDate() }}
-                      </button>
-                    }
+                    <button
+                      type="button"
+                      class="measure-calendar-day"
+                      [class.is-selected]="isSelectedDate(cell)"
+                      [class.is-today]="isTodayDate(cell)"
+                      [class.is-outside-month]="cell.getMonth() !== viewMonth || cell.getFullYear() !== viewYear"
+                      [disabled]="loading"
+                      (click)="onCalendarDateSelected(cell)"
+                    >
+                      {{ cell.getDate() }}
+                    </button>
                   }
                 </div>
               </div>
             </section>
 
             <section class="card rounded-3 measure-filters-split-card">
-              <div class="card-body measure-filters-split-card-body">
-                <label class="form-label">Clientes</label>
-                <div class="measure-client-pill-box" (click)="clientPillInput.focus()">
-                  @for (pill of clientIdPills; track pill) {
-                    <span class="measure-client-pill">
-                      <span>{{ pill }}</span>
-                      <button
-                        type="button"
-                        class="measure-client-pill-remove"
-                        aria-label="Eliminar cliente"
-                        title="Eliminar cliente"
-                        [disabled]="loading"
-                        (click)="removeClientPill(pill, $event)"
-                      >
-                        &times;
-                      </button>
-                    </span>
-                  }
+              <div class="card-body measure-filters-split-card-body measure-filters-right-panel">
+                <div class="measure-filters-row measure-filters-row--clients">
+                  <label class="form-label mb-1">Clientes</label>
+                  <div class="measure-client-pill-box" (click)="clientPillInput.focus()">
+                    @for (pill of clientIdPills; track pill) {
+                      <span class="measure-client-pill">
+                        <span>{{ pill }}</span>
+                        <button
+                          type="button"
+                          class="measure-client-pill-remove"
+                          aria-label="Eliminar cliente"
+                          title="Eliminar cliente"
+                          [disabled]="loading"
+                          (click)="removeClientPill(pill, $event)"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    }
 
-                  <input
-                    #clientPillInput
-                    class="measure-client-pill-input"
-                    [disabled]="loading"
-                    [placeholder]="clientIdPills.length === 0 ? clientPlaceholder : ''"
-                    [ngModel]="clientIdDraft"
-                    (ngModelChange)="clientIdDraft = $event"
-                    (keydown)="onClientDraftKeydown($event)"
-                    (blur)="commitClientDraft()"
-                    aria-label="Agregar ID cliente"
-                  />
+                    <input
+                      #clientPillInput
+                      class="measure-client-pill-input"
+                      [disabled]="loading"
+                      [placeholder]="clientIdPills.length === 0 ? clientPlaceholder : ''"
+                      [value]="clientIdDraft"
+                      (input)="clientIdDraft = $any($event.target).value"
+                      (keydown)="onClientDraftKeydown($event)"
+                      (blur)="commitClientDraft()"
+                      aria-label="Agregar ID cliente"
+                    />
+                  </div>
                 </div>
 
-                @if (showActionButtons) {
-                  <div class="measure-client-actions">
-                    <button class="btn btn-primary" (click)="search.emit()" [disabled]="loading">Buscar</button>
-                    <button class="btn btn-outline-secondary" (click)="clear.emit()" [disabled]="loading">Limpiar</button>
-                  </div>
-                }
+                <div class="measure-filters-row measure-filters-row--tarifas">
+                  <label class="form-label mb-1">Tarifas</label>
+                  <select
+                    class="form-select form-select-sm"
+                    [value]="selectedTarifa"
+                    (change)="onTarifaChange($any($event.target).value)"
+                    [disabled]="loading"
+                  >
+                    <option value="">Todas las tarifas</option>
+                    @for (tarifa of tarifasDisponibles; track tarifa) {
+                      <option [value]="tarifa">{{ tarifa }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="measure-filters-actions-row">
+                  @if (showActionButtons) {
+                    <div class="measure-client-actions">
+                      <button class="btn btn-primary btn-sm px-3" (click)="searchRequested.emit()" [disabled]="loading || searchDisabled">Buscar</button>
+                      <button class="btn btn-outline-secondary btn-sm px-3" (click)="clearRequested.emit()" [disabled]="loading || clearDisabled">Limpiar</button>
+                    </div>
+                  }
+                </div>
               </div>
             </section>
           </div>
         } @else {
           <div class="row g-3 align-items-center">
             <div class="col-md-3">
-              <div class="measure-filter-field-shell" [ngClass]="{ 'card shadow-sm rounded-3 h-100': splitFieldsIntoCards }">
+              <div [class]="splitFieldsIntoCards ? 'measure-filter-field-shell card shadow-sm rounded-3 h-100' : 'measure-filter-field-shell'">
                 <div [class]="splitFieldsIntoCards ? 'card-body py-2 px-3' : ''">
                   <label class="form-label">Fecha</label>
                   <div class="d-flex gap-2 align-items-center">
@@ -163,8 +180,8 @@ import { FormsModule } from '@angular/forms';
                     <input
                       class="form-control"
                       type="date"
-                      [ngModel]="day"
-                      (ngModelChange)="dayChange.emit($event)"
+                      [value]="day"
+                      (input)="dayChange.emit($any($event.target).value)"
                     />
                     <button
                       class="btn btn-sm btn-outline-secondary"
@@ -180,13 +197,13 @@ import { FormsModule } from '@angular/forms';
             </div>
 
             <div class="col-md-6">
-              <div class="measure-filter-field-shell" [ngClass]="{ 'card shadow-sm rounded-3 h-100': splitFieldsIntoCards }">
+              <div [class]="splitFieldsIntoCards ? 'measure-filter-field-shell card shadow-sm rounded-3 h-100' : 'measure-filter-field-shell'">
                 <div [class]="splitFieldsIntoCards ? 'card-body py-2 px-3' : ''">
                   <label class="form-label">Clientes</label>
                   <input
                     class="form-control"
-                    [ngModel]="clientIdsText"
-                    (ngModelChange)="clientIdsTextChange.emit($event)"
+                    [value]="clientIdsText"
+                    (input)="clientIdsTextChange.emit($any($event.target).value)"
                     [placeholder]="clientPlaceholder"
                   />
                   <small class="text-muted">{{ helperText }}</small>
@@ -196,8 +213,8 @@ import { FormsModule } from '@angular/forms';
 
             @if (showActionButtons) {
               <div class="col-md-3 d-flex gap-2">
-                <button class="btn btn-primary" (click)="search.emit()" [disabled]="loading">Buscar</button>
-                <button class="btn btn-outline-secondary" (click)="clear.emit()" [disabled]="loading">Limpiar</button>
+                <button class="btn btn-primary" (click)="searchRequested.emit()" [disabled]="loading || searchDisabled">Buscar</button>
+                <button class="btn btn-outline-secondary" (click)="clearRequested.emit()" [disabled]="loading || clearDisabled">Limpiar</button>
               </div>
             }
           </div>
@@ -221,14 +238,41 @@ import { FormsModule } from '@angular/forms';
       padding: 0.75rem;
       display: flex;
       flex-direction: column;
+      gap: 0.25rem;
       min-height: 0;
+      height: 100%;
+    }
+
+    .measure-filters-right-panel {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1.1fr) auto auto;
+      row-gap: 0.55rem;
+      height: 100%;
+    }
+
+    .measure-filters-row {
+      margin-bottom: 0;
+    }
+
+    .measure-filters-row .form-label {
+      margin-bottom: 0.25rem;
+    }
+
+    .measure-filters-row--clients {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
     }
 
     .measure-client-pill-box {
       border: 1px solid #d0d5dd;
       border-radius: 0.5rem;
-      min-height: 7.5rem;
-      padding: 0.45rem;
+      min-height: 0;
+      height: 100%;
+      max-height: none;
+      overflow-y: auto;
+      padding: 0.4rem;
       display: flex;
       align-content: flex-start;
       align-items: flex-start;
@@ -282,18 +326,17 @@ import { FormsModule } from '@angular/forms';
     }
 
     .measure-client-actions {
-      margin-top: auto;
-      padding-top: 0.55rem;
       display: flex;
       gap: 0.5rem;
+      align-items: center;
       justify-content: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
 
     .measure-calendar-toolbar {
       display: grid;
-      grid-template-columns: 2rem minmax(5.3rem, 1fr) minmax(4.6rem, 0.9fr) 2rem;
-      gap: 0.3rem;
+      grid-template-columns: 2rem minmax(4.3rem, 1fr) minmax(5.2rem, 1fr) 2rem;
+      gap: 0.25rem;
       align-items: center;
       margin-bottom: 0.45rem;
     }
@@ -333,11 +376,11 @@ import { FormsModule } from '@angular/forms';
     }
 
     .measure-calendar-month-select {
-      min-width: 5.3rem;
+      min-width: 4.3rem;
     }
 
     .measure-calendar-year-select {
-      min-width: 4.6rem;
+      min-width: 5rem;
     }
 
     .measure-calendar-weekdays {
@@ -358,10 +401,6 @@ import { FormsModule } from '@angular/forms';
       gap: 0.15rem;
       flex: 1 1 auto;
       min-height: 0;
-    }
-
-    .measure-calendar-day-placeholder {
-      display: block;
     }
 
     .measure-calendar-day {
@@ -392,12 +431,14 @@ import { FormsModule } from '@angular/forms';
       font-weight: 700;
     }
 
-    .measure-filters-actions-centered {
-      margin-top: 0.9rem;
-      display: flex;
-      justify-content: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
+    .measure-calendar-day.is-outside-month {
+      color: #98a2b3;
+    }
+
+    .measure-calendar-day.is-outside-month:hover {
+      background: #f2f4f7;
+      border-color: #e4e7ec;
+      color: #667085;
     }
 
     @media (max-width: 768px) {
@@ -406,7 +447,7 @@ import { FormsModule } from '@angular/forms';
       }
 
       .measure-calendar-toolbar {
-        grid-template-columns: 2rem minmax(5.3rem, 1fr) 2rem;
+        grid-template-columns: 2rem minmax(4.3rem, 1fr) 2rem;
       }
 
       .measure-calendar-toolbar select:last-of-type {
@@ -424,11 +465,16 @@ export class MeasureFiltersComponent implements OnChanges {
   @Input() day = '';
   @Input() clientIdsText = '';
   @Input() loading = false;
+  @Input() calendarSyncToken = 0;
   @Input() clientPlaceholder = 'IDs separados por coma';
   @Input() helperText = 'Opcional. Separar IDs por coma; vacio = todos los clientes.';
   @Input() splitFieldsIntoCards = false;
   @Input() layoutMode: 'default' | 'top-split' = 'default';
   @Input() showActionButtons = true;
+  @Input() searchDisabled = false;
+  @Input() clearDisabled = false;
+  @Input() selectedTarifa = '';
+  @Input() tarifasDisponibles: string[] = [];
 
   readonly weekDaysShort = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
   readonly monthNames = [
@@ -452,11 +498,13 @@ export class MeasureFiltersComponent implements OnChanges {
 
   @Output() dayChange = new EventEmitter<string>();
   @Output() clientIdsTextChange = new EventEmitter<string>();
-  @Output() search = new EventEmitter<void>();
-  @Output() clear = new EventEmitter<void>();
+  @Output() selectedTarifaChange = new EventEmitter<string>();
+  @Output() searchRequested = new EventEmitter<void>();
+  @Output() clearRequested = new EventEmitter<void>();
+  @Output() clientPillRemoved = new EventEmitter<void>();
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['day']) {
+    if (changes['day'] || changes['calendarSyncToken']) {
       this.syncCalendarToSelectedDay();
     }
   }
@@ -466,27 +514,25 @@ export class MeasureFiltersComponent implements OnChanges {
     return Array.from({ length: 17 }, (_, index) => start + index);
   }
 
-  get monthCells(): Array<Date | null> {
+  get monthCells(): Date[] {
     const firstDay = new Date(this.viewYear, this.viewMonth, 1);
     const totalDays = new Date(this.viewYear, this.viewMonth + 1, 0).getDate();
+    const previousMonthTotalDays = new Date(this.viewYear, this.viewMonth, 0).getDate();
     const leadingBlanks = firstDay.getDay();
-    const cells: Array<Date | null> = [];
+    const cells: Date[] = [];
 
-    for (let i = 0; i < leadingBlanks; i += 1) {
-      cells.push(null);
+    for (let i = leadingBlanks; i > 0; i -= 1) {
+      cells.push(new Date(this.viewYear, this.viewMonth - 1, previousMonthTotalDays - i + 1));
     }
 
     for (let day = 1; day <= totalDays; day += 1) {
       cells.push(new Date(this.viewYear, this.viewMonth, day));
     }
 
-    while (cells.length % 7 !== 0) {
-      cells.push(null);
-    }
-
-    // Fuerza 6 semanas para evitar saltos/overflow entre meses de 4/5/6 semanas.
+    let nextMonthDay = 1;
     while (cells.length < 42) {
-      cells.push(null);
+      cells.push(new Date(this.viewYear, this.viewMonth + 1, nextMonthDay));
+      nextMonthDay += 1;
     }
 
     return cells;
@@ -539,6 +585,10 @@ export class MeasureFiltersComponent implements OnChanges {
     this.viewYear = Number(year);
   }
 
+  onTarifaChange(tarifa: string): void {
+    this.selectedTarifaChange.emit(tarifa);
+  }
+
   onCalendarDateSelected(date: Date): void {
     this.viewYear = date.getFullYear();
     this.viewMonth = date.getMonth();
@@ -559,6 +609,7 @@ export class MeasureFiltersComponent implements OnChanges {
         return;
       }
       this.updateClientPills(pills.slice(0, -1));
+      this.clientPillRemoved.emit();
     }
   }
 
@@ -577,6 +628,7 @@ export class MeasureFiltersComponent implements OnChanges {
     event?.stopPropagation();
     const next = this.clientIdPills.filter((item) => item !== pill);
     this.updateClientPills(next);
+    this.clientPillRemoved.emit();
   }
 
   isSelectedDate(date: Date): boolean {
@@ -588,9 +640,6 @@ export class MeasureFiltersComponent implements OnChanges {
     return this.toIsoDate(date) === this.toIsoDate(new Date());
   }
 
-  formatYearShort(year: number): string {
-    return String(year).slice(-2);
-  }
 
   isCurrentDaySelected(): boolean {
     if (!this.day) {
@@ -614,7 +663,7 @@ export class MeasureFiltersComponent implements OnChanges {
   }
 
   private parseIsoDate(value: string): Date | null {
-    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const match = ISO_DATE_REGEX.exec(value);
     if (!match) {
       return null;
     }
@@ -649,4 +698,3 @@ export class MeasureFiltersComponent implements OnChanges {
     this.clientIdsTextChange.emit(tokens.join(', '));
   }
 }
-

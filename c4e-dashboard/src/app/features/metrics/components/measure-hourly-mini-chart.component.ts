@@ -992,9 +992,10 @@ export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy {
 
     const count = hourlyTotals.length;
     const dataMax = hourlyTotals.reduce((max, item) => Math.max(max, item.total), 0);
-    // Usa el mayor entre el tope configurado y el máximo real y agrega margen visual superior.
-    const baseMax = Math.max(this.chartYMax || 0, dataMax, 1);
-    const safeMax = Math.ceil(baseMax * 1.1);
+    // Escala completamente dinámica basada en el máximo real del dataset filtrado.
+    // Esto evita pisos artificiales (por ejemplo 2500/2800) que distorsionan la posición de puntos.
+    const baseMax = Math.max(dataMax, 1);
+    const safeMax = this.computeDynamicScaleMax(baseMax);
     this.modalScaleMax = safeMax;
     this.modalMaxValue = dataMax;
     this.modalMinValue = hourlyTotals.reduce((min, item) => Math.min(min, item.total), Number.POSITIVE_INFINITY);
@@ -1055,6 +1056,21 @@ export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy {
     });
 
     return { points, xTicks, yTicks, path };
+  }
+
+  private computeDynamicScaleMax(baseMax: number): number {
+    const rawMax = Math.max(baseMax, 1) * 1.1;
+
+    if (rawMax <= 100) {
+      return Math.ceil(rawMax / 10) * 10;
+    }
+    if (rawMax <= 500) {
+      return Math.ceil(rawMax / 25) * 25;
+    }
+    if (rawMax <= 2000) {
+      return Math.ceil(rawMax / 50) * 50;
+    }
+    return Math.ceil(rawMax / 100) * 100;
   }
 
   private buildModalXTicks(hourlyTotals: Array<{ hour: string; total: number }>, points: MiniChartPoint[]): MiniChartTick[] {

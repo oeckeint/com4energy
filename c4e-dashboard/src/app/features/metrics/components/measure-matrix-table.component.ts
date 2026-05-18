@@ -23,6 +23,11 @@ interface MeasureColumnValidation {
   complete: boolean;
 }
 
+export interface MeasureActiveFilterPill {
+  key: 'tarifa' | 'clientes';
+  label: string;
+}
+
 @Component({
   selector: 'app-measure-matrix-table',
   standalone: true,
@@ -46,9 +51,16 @@ interface MeasureColumnValidation {
                   >
                     &#9664;
                   </button>
-                  <div class="measure-matrix-date-label" [attr.aria-label]="'Fecha seleccionada: ' + headerDateDisplay">
+                  <button
+                    type="button"
+                    class="measure-matrix-date-label measure-matrix-date-label--button"
+                    [attr.aria-label]="'Fecha seleccionada: ' + headerDateDisplay + '. Hacer clic para enfocar calendario'"
+                    title="Ir al día actual en el calendario"
+                    [disabled]="loading"
+                    (click)="requestHeaderDateFocus()"
+                  >
                     {{ headerDateDisplay }}
-                  </div>
+                  </button>
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-secondary measure-matrix-date-nav-btn"
@@ -90,7 +102,28 @@ interface MeasureColumnValidation {
           </div>
 
           <div class="measure-matrix-toolbar-row measure-matrix-toolbar-row--actions">
-            <div class="measure-matrix-toolbar-side measure-matrix-toolbar-left"></div>
+            <div class="measure-matrix-toolbar-side measure-matrix-toolbar-left">
+              @if (activeFilterPills.length > 0) {
+                <div class="measure-matrix-active-filters-group" aria-label="Filtros activos">
+                  @for (pill of activeFilterPills; track pill.key) {
+                    <span class="measure-matrix-active-filters">
+                      <span class="measure-matrix-active-filters-icon" aria-hidden="true">⚙</span>
+                      <span class="text-muted small">{{ pill.label }}</span>
+                      <button
+                        type="button"
+                        class="measure-matrix-active-filters-remove"
+                        [attr.aria-label]="'Quitar filtro ' + pill.label"
+                        [attr.title]="'Quitar filtro ' + pill.label"
+                        [disabled]="loading"
+                        (click)="removeActiveFilter(pill.key, $event)"
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  }
+                </div>
+              }
+            </div>
             <div class="measure-matrix-toolbar-side measure-matrix-toolbar-center"></div>
             <div class="measure-matrix-toolbar-side measure-matrix-toolbar-right">
               @if (loading || statusText || !hasData) {
@@ -360,6 +393,7 @@ export class MeasureMatrixTableComponent implements OnChanges {
   @Input() exportMeasureType = 'Medidas';
   @Input() exportDate: string | null = null;
   @Input() exportClientFilterText = '';
+  @Input() activeFilterPills: MeasureActiveFilterPill[] = [];
   @Input() showDateNavigator = false;
   @Input() headerDate: string | null = null;
   @Input() cellOriginFetcher: ((hour: string, clientId: number) => Promise<string | null>) | null = null;
@@ -367,7 +401,9 @@ export class MeasureMatrixTableComponent implements OnChanges {
   @Output() headerPreviousDayRequested = new EventEmitter<void>();
   @Output() headerNextDayRequested = new EventEmitter<void>();
   @Output() headerDateSelected = new EventEmitter<string>();
+  @Output() headerDateFocusRequested = new EventEmitter<void>();
   @Output() refreshRequested = new EventEmitter<void>();
+  @Output() activeFilterRemoved = new EventEmitter<'tarifa' | 'clientes'>();
 
   hoveredHour: string | null = null;
   hoveredClientId: number | null = null;
@@ -384,6 +420,11 @@ export class MeasureMatrixTableComponent implements OnChanges {
       this.cellOriginLoading.clear();
       this.cellOriginError.clear();
     }
+  }
+
+  removeActiveFilter(filterKey: 'tarifa' | 'clientes', event?: Event): void {
+    event?.stopPropagation();
+    this.activeFilterRemoved.emit(filterKey);
   }
 
   get headerDateDisplay(): string {
@@ -452,6 +493,10 @@ export class MeasureMatrixTableComponent implements OnChanges {
 
   requestNextDay(): void {
     this.headerNextDayRequested.emit();
+  }
+
+  requestHeaderDateFocus(): void {
+    this.headerDateFocusRequested.emit();
   }
 
   onHeaderDateSelected(rawDate: string): void {

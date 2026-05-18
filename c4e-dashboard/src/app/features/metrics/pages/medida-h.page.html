@@ -9,14 +9,21 @@
           [splitFieldsIntoCards]="false"
           [layoutMode]="'top-split'"
           [showActionButtons]="true"
+          [searchDisabled]="!hasPendingSearchChanges"
+          [clearDisabled]="!hasActiveFilters"
+          [calendarSyncToken]="calendarSyncToken"
           [day]="filters.day"
           (dayChange)="onDayChange($event)"
           [clientIdsText]="filters.clientIdsText"
           (clientIdsTextChange)="filters.clientIdsText = $event"
+          [selectedTarifa]="filters.selectedTarifa"
+          (selectedTarifaChange)="onTarifaChange($event)"
+          [tarifasDisponibles]="service.tarifas()"
           [loading]="service.loading()"
           [helperText]="'Opcional. Separar IDs por coma (ej: 3366,3367). Sin filtro: muestra todos los clientes.'"
-          (search)="applyFilters()"
-          (clear)="clearFilters()"
+          (searchRequested)="applyFilters()"
+          (clearRequested)="clearFilters()"
+          (clientPillRemoved)="applyFilters()"
         />
       </div>
     </div>
@@ -77,11 +84,13 @@
     </button>
   </div>
 
-  <div
+  <button
+    type="button"
     class="measure-h-tools-backdrop"
     [class.measure-h-tools-backdrop--open]="toolsPanelOpen"
     (click)="closeToolsPanel()"
-  ></div>
+    aria-label="Cerrar panel de herramientas"
+  ></button>
 
   <aside
     id="medida-h-tools-drawer"
@@ -137,9 +146,12 @@
     (headerPreviousDayRequested)="shiftTableDay(-1)"
     (headerNextDayRequested)="shiftTableDay(1)"
     (headerDateSelected)="onTableDateSelected($event)"
+    (headerDateFocusRequested)="focusCalendarOnCurrentTableDay()"
     (refreshRequested)="applyFilters()"
+    (activeFilterRemoved)="onActiveFilterRemoved($event)"
     [statusText]="statusLabel"
     [statusWarning]="statusHasDiscrepancy"
+    [activeFilterPills]="activeFilterPills"
     [expectedFallback]="24"
     [clientColumnMinWidth]="140"
     [exportMeasureType]="'Medida H'"

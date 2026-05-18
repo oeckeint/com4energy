@@ -10,8 +10,8 @@
         (clientIdsTextChange)="filters.clientIdsText = $event"
         [loading]="service.loading()"
         [helperText]="'Separar IDs por coma.'"
-        (search)="applyFilters()"
-        (clear)="clearFilters()"
+        (searchRequested)="applyFilters()"
+        (clearRequested)="clearFilters()"
       />
     </div>
 
@@ -48,9 +48,10 @@
   }
 
   @if (service.loading()) {
-    <div class="d-flex align-items-center mb-3" aria-live="polite" aria-busy="true">
-      <div class="spinner-border spinner-border-sm" role="status"></div>
-    </div>
+    <output class="d-flex align-items-center mb-3" aria-live="polite" aria-busy="true">
+      <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+      <span class="visually-hidden">Cargando datos</span>
+    </output>
   }
 
   <app-measure-matrix-table
