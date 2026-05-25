@@ -7,6 +7,9 @@ import com.com4energy.recordsapi.controller.common.ApiConstants;
 import com.com4energy.recordsapi.exception.BusinessException;
 import com.com4energy.recordsapi.exception.ResourceNotFoundException;
 import com.com4energy.recordsapi.response.ApiError;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -76,7 +79,10 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleGeneric(Exception ex) {
+    public ResponseEntity<?> handleGeneric(Exception ex, HttpServletRequest request) {
+        if (isSseRequest(request)) {
+            return ResponseEntity.status(ApiConstants.HTTP_INTERNAL_SERVER_ERROR).build();
+        }
 
         ApiError error = new ApiError(
                 ApiConstants.HTTP_INTERNAL_SERVER_ERROR,
@@ -92,6 +98,14 @@ public class GlobalExceptionHandler {
             root = root.getCause();
         }
         return root;
+    }
+
+    private boolean isSseRequest(HttpServletRequest request) {
+        if (request == null) {
+            return false;
+        }
+        String accept = request.getHeader(HttpHeaders.ACCEPT);
+        return accept != null && accept.contains(MediaType.TEXT_EVENT_STREAM_VALUE);
     }
 
 }

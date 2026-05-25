@@ -2,6 +2,7 @@ package com.com4energy.recordsapi.messaging.filerecord;
 
 import com.com4energy.recordsapi.domain.entity.messaging.FileRecordEvent;
 import com.com4energy.recordsapi.repository.FileRecordEventRepository;
+import com.com4energy.recordsapi.service.notifications.FileProcessingNotificationSseService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -19,7 +20,8 @@ class FileRecordConsumerTest {
         FileRecordConsumer consumer = new FileRecordConsumer(
                 new FileRecordRoutingProperties(),
                 org.mockito.Mockito.mock(FileRecordEventRepository.class),
-                new ObjectMapper()
+                new ObjectMapper(),
+                org.mockito.Mockito.mock(FileProcessingNotificationSseService.class)
         );
 
         Map<String, Object> payload = Map.of(

@@ -1,39 +1,44 @@
-package com.com4energy.recordsapi.controller.medidas.qh;
+package com.com4energy.recordsapi.controller.medidas.cch;
 
+import com.com4energy.i18n.core.Messages;
 import com.com4energy.recordsapi.common.Constants;
 import com.com4energy.recordsapi.common.RecordsApiCommonMessageKey;
-import com.com4energy.i18n.core.Messages;
 import com.com4energy.recordsapi.controller.common.ApiConstants;
 import com.com4energy.recordsapi.controller.common.ResponseHelper;
 import com.com4energy.recordsapi.controller.common.dto.PageResponse;
 import com.com4energy.recordsapi.controller.medidas.DateRangeHelper;
 import com.com4energy.recordsapi.controller.medidas.MedidasConstants;
-import com.com4energy.recordsapi.domain.entity.medidas.MedidaQH;
+import com.com4energy.recordsapi.domain.entity.medidas.MedidaCCH;
 import com.com4energy.recordsapi.exception.ResourceNotFoundException;
-import com.com4energy.recordsapi.service.MedidaQHService;
+import com.com4energy.recordsapi.service.MedidaCCHService;
+import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
-
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.time.LocalDateTime;
 
 @RestController
 @AllArgsConstructor
-@RequestMapping(MedidaQHConstants.BASE_PATH)
-public class MedidaQHController {
+@RequestMapping(MedidaCCHConstants.BASE_PATH)
+public class MedidaCCHController {
 
-    private final MedidaQHService medidaQHService;
+    private final MedidaCCHService medidaCCHService;
 
     @GetMapping
-    public ResponseEntity<PageResponse<MedidaQH>> getAll(
+    public ResponseEntity<PageResponse<MedidaCCH>> getAll(
             @RequestParam(name = Constants.ID_CLIENTE, required = false) Integer idCliente,
             @RequestParam(name = "startDate", required = false) String startDate,
             @RequestParam(name = "endDate", required = false) String endDate,
@@ -50,8 +55,8 @@ public class MedidaQHController {
         return findMedidas(idCliente, dateRange, pageable);
     }
 
-    @GetMapping(MedidaQHConstants.LAST_24H_PATH)
-    public ResponseEntity<PageResponse<MedidaQH>> last24Hours(
+    @GetMapping(MedidaCCHConstants.LAST_24H_PATH)
+    public ResponseEntity<PageResponse<MedidaCCH>> last24Hours(
             @RequestParam(name = Constants.ID_CLIENTE, required = false) Integer idCliente,
             @PageableDefault(
                     size = ApiConstants.DEFAULT_PAGE_SIZE,
@@ -66,9 +71,9 @@ public class MedidaQHController {
     }
 
     @GetMapping(ApiConstants.ID_PATH)
-    public ResponseEntity<MedidaQH> getById(@PathVariable Integer id) {
+    public ResponseEntity<MedidaCCH> getById(@PathVariable Integer id) {
 
-        MedidaQH medida = medidaQHService.findById(id)
+        MedidaCCH medida = medidaCCHService.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         Messages.format(RecordsApiCommonMessageKey.MEDIDA_NOT_FOUND, id)
                 ));
@@ -77,23 +82,22 @@ public class MedidaQHController {
     }
 
     @PostMapping
-    public ResponseEntity<MedidaQH> save(@Validated @RequestBody MedidaQH medidaQH) {
-        MedidaQH saved = medidaQHService.save(medidaQH);
+    public ResponseEntity<MedidaCCH> save(@Validated @RequestBody MedidaCCH medidaCCH) {
+        MedidaCCH saved = medidaCCHService.save(medidaCCH);
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path(ApiConstants.ID_PATH)
-                .buildAndExpand(saved.getIdMedidaQH())
+                .buildAndExpand(saved.getId())
                 .toUri();
-        // Safe: response serialized as JSON, no HTML rendering
         return ResponseHelper.created(location, saved);
     }
 
-    private ResponseEntity<PageResponse<MedidaQH>> findMedidas(
+    private ResponseEntity<PageResponse<MedidaCCH>> findMedidas(
             Integer clienteId,
             DateRangeHelper.DateRange dateRange,
             Pageable pageable) {
 
-        Page<MedidaQH> result = medidaQHService.findAll(
+        Page<MedidaCCH> result = medidaCCHService.findAll(
                 clienteId,
                 dateRange.getStart(),
                 dateRange.getEnd(),
@@ -102,5 +106,7 @@ public class MedidaQHController {
 
         return ResponseHelper.page(result);
     }
-
 }
+
+
+

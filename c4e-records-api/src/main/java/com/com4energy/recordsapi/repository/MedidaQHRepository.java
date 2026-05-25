@@ -15,12 +15,12 @@ import java.time.LocalDateTime;
 public interface MedidaQHRepository extends JpaRepository<MedidaQH, Integer> {
 
         String QUERY_FIND_BY_FILTERS = "select m from MedidaQH m"
-            + " where (:clienteId is null or m.id_cliente = :clienteId)"
+            + " where (:clienteId is null or m.clienteId = :clienteId)"
             + " and ((cast(:start as timestamp) is null and cast(:end as timestamp) is null) or (m.fecha >= :start and m.fecha <= :end))";
 
-        String QUERY_FIND_LAST_N = "select m from MedidaQH m where (:clienteId is null or m.id_cliente = :clienteId) and m.fecha is not null order by m.fecha desc";
+        String QUERY_FIND_LAST_N = "select m from MedidaQH m where (:clienteId is null or m.clienteId = :clienteId) and m.fecha is not null order by m.fecha desc";
 
-        String QUERY_FIND_ALL_FOR_CLIENTE = "select m from MedidaQH m where m.id_cliente = :idCliente";
+        String QUERY_FIND_ALL_FOR_CLIENTE = "select m from MedidaQH m where m.clienteId = :idCliente";
 
         @Query(QUERY_FIND_BY_FILTERS)
         Page<MedidaQH> findByFilters(@Param("clienteId") Integer clienteId,

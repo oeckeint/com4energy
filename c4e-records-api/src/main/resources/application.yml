@@ -77,6 +77,13 @@ c4e:
         routingKey: c4e.file.already-exists
         deadLetterExchange: c4e.file.record.already-exists.dlx
         deadLetterQueue: c4e.file.record.already-exists.dlq
+      processingStarted:
+        eventType: FILE_PROCESSING_STARTED
+        queue: c4e.file.record.processing-started.queue
+        exchange: c4e.exchange
+        routingKey: c4e.file.processing-started
+        deadLetterExchange: c4e.file.record.processing-started.dlx
+        deadLetterQueue: c4e.file.record.processing-started.dlq
       defectReportCreated:
         eventType: FILE_DEFECT_REPORT_CREATED
         queue: c4e.file.record.defect-report-created.queue
@@ -91,6 +98,13 @@ c4e:
         routingKey: c4e.file.persistence-quarantine
         deadLetterExchange: c4e.file.record.persistence-quarantine.dlx
         deadLetterQueue: c4e.file.record.persistence-quarantine.dlq
+      measureProcessed:
+        eventType: FILE_MEASURE_PROCESSED
+        queue: c4e.file.record.measure-processed.queue
+        exchange: c4e.exchange
+        routingKey: c4e.file.measure-processed
+        deadLetterExchange: c4e.file.record.measure-processed.dlx
+        deadLetterQueue: c4e.file.record.measure-processed.dlq
 
 # ==============================
 # Perfil DEV

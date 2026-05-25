@@ -17,6 +17,7 @@ import static com.com4energy.recordsapi.messaging.filerecord.FileRecordPayloadKe
 import static com.com4energy.recordsapi.messaging.filerecord.FileRecordPayloadKeys.LINE_NUMBER;
 import static com.com4energy.recordsapi.messaging.filerecord.FileRecordPayloadKeys.LINE_REFERENCE;
 import static com.com4energy.recordsapi.messaging.filerecord.FileRecordPayloadKeys.METADATA;
+import static com.com4energy.recordsapi.messaging.filerecord.FileRecordPayloadKeys.MEASURE_TYPE;
 import static com.com4energy.recordsapi.messaging.filerecord.FileRecordPayloadKeys.OCCURRED_AT;
 import static com.com4energy.recordsapi.messaging.filerecord.FileRecordPayloadKeys.ORIGINAL_FILENAME;
 import static com.com4energy.recordsapi.messaging.filerecord.FileRecordPayloadKeys.ORIGIN;
@@ -34,6 +35,7 @@ import com.com4energy.i18n.core.Messages;
 import com.com4energy.recordsapi.common.RecordsApiCommonMessageKey;
 import com.com4energy.recordsapi.domain.entity.messaging.FileRecordEvent;
 import com.com4energy.recordsapi.repository.FileRecordEventRepository;
+import com.com4energy.recordsapi.service.notifications.FileProcessingNotificationSseService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +47,8 @@ import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistrar;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -60,9 +64,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class FileRecordConsumer implements RabbitListenerConfigurer {
 
+    private static final String FILE_MEASURE_PROCESSED = "FILE_MEASURE_PROCESSED";
+    private static final String STATUS_SUCCEEDED = "SUCCEEDED";
+
     private final FileRecordRoutingProperties props;
     private final FileRecordEventRepository repository;
     private final ObjectMapper objectMapper;
+    private final FileProcessingNotificationSseService notificationSseService;
 
     @Override
     public void configureRabbitListeners(RabbitListenerEndpointRegistrar registrar) {
@@ -78,6 +86,7 @@ public class FileRecordConsumer implements RabbitListenerConfigurer {
                     String eventType = resolveEventType(typeKey, config, payload);
                     FileRecordEvent entity = mapToEntity(payload, eventType);
                     FileRecordEvent saved = repository.save(entity);
+                    notificationSseService.publish(saved);
 
                     log.info(Messages.format(RecordsApiCommonMessageKey.FILE_RECORD_EVENT_SAVED,
                             eventType, saved.getId(), saved.getFilename()));
@@ -115,16 +124,17 @@ public class FileRecordConsumer implements RabbitListenerConfigurer {
     }
 
     private FileRecordEvent mapToEntity(Map<String, Object> payload, String eventType) {
+        String sourceId = resolveSourceId(payload);
         return FileRecordEvent.builder()
-                .sourceId(resolveSourceId(payload))
+                .sourceId(sourceId)
                 .filename(getStringWithFallback(payload, FILENAME, ORIGINAL_FILENAME))
                 .extension(getString(payload, EXTENSION))
-                .fileType(getStringWithFallback(payload, FILE_TYPE, TYPE))
+                .fileType(getStringWithFallback(payload, FILE_TYPE, MEASURE_TYPE, TYPE))
                 .finalPath(getString(payload, FINAL_PATH))
-                .status(getString(payload, STATUS))
+                .status(resolveStatus(eventType, payload))
                 .origin(getString(payload, ORIGIN))
                 .failureReason(getString(payload, REASON))
-                .failureReasonDescription(getString(payload, REASON_DESCRIPTION))
+                .failureReasonDescription(resolveFailureReasonDescription(eventType, payload, sourceId))
                 .failedLineNumber(getIntegerWithFallback(payload, LINE_NUMBER, FAILED_LINE_NUMBER, LINE))
                 .failedLineReference(getStringWithFallback(payload, LINE_REFERENCE, FAILED_LINE_REFERENCE, REFERENCE))
                 .comment(getString(payload, COMMENT))
@@ -134,6 +144,77 @@ public class FileRecordConsumer implements RabbitListenerConfigurer {
                 .eventType(eventType)
                 .occurredAt(parseDateTime(getString(payload, OCCURRED_AT)))
                 .build();
+    }
+
+    private String resolveFailureReasonDescription(String eventType, Map<String, Object> payload, String sourceId) {
+        String fromPayload = getString(payload, REASON_DESCRIPTION);
+        if (fromPayload != null && !fromPayload.isBlank()) {
+            return fromPayload;
+        }
+
+        if (!FILE_MEASURE_PROCESSED.equalsIgnoreCase(eventType)) {
+            return null;
+        }
+
+        Map<String, Object> metadata = toMetadataMap(payload.get(METADATA));
+        if (metadata.isEmpty()) {
+            return null;
+        }
+
+        String filename = getStringWithFallback(payload, FILENAME, ORIGINAL_FILENAME);
+        return "event=measure_file_processed"
+                + " fileId=" + valueOrDash(sourceId)
+                + " filename='" + valueOrDash(filename) + "'"
+                + " measureType=" + valueOrDash(metadata.get(MEASURE_TYPE))
+                + " total=" + valueOrDash(metadata.get("total"))
+                + " persisted=" + valueOrDash(metadata.get("persisted"))
+                + " defects=" + valueOrDash(metadata.get("defects"))
+                + " skipped=" + valueOrDash(metadata.get("skipped"))
+                + " targetTable=" + valueOrDash(metadata.get("targetTable"))
+                + " totalMs=" + valueOrDash(metadata.get("totalMs"))
+                + " parseMs=" + valueOrDash(metadata.get("parseMs"))
+                + " persistMs=" + valueOrDash(metadata.get("persistMs"));
+    }
+
+    private Map<String, Object> toMetadataMap(Object metadataRaw) {
+        if (metadataRaw == null) {
+            return Map.of();
+        }
+        if (metadataRaw instanceof Map<?, ?> metadataMap) {
+            Map<String, Object> normalized = new LinkedHashMap<>();
+            metadataMap.forEach((key, value) -> normalized.put(String.valueOf(key), value));
+            return normalized;
+        }
+        if (metadataRaw instanceof String metadataString) {
+            if (metadataString.isBlank()) {
+                return Map.of();
+            }
+            try {
+                return objectMapper.readValue(metadataString, new TypeReference<>() {});
+            } catch (Exception ignored) {
+                return Map.of();
+            }
+        }
+        return Map.of();
+    }
+
+    private String valueOrDash(Object value) {
+        if (value == null) {
+            return "-";
+        }
+        String text = value.toString();
+        return text.isBlank() ? "-" : text;
+    }
+
+    private String resolveStatus(String eventType, Map<String, Object> payload) {
+        String fromPayload = getString(payload, STATUS);
+        if (fromPayload != null && !fromPayload.isBlank()) {
+            return fromPayload;
+        }
+        if (FILE_MEASURE_PROCESSED.equalsIgnoreCase(eventType)) {
+            return STATUS_SUCCEEDED;
+        }
+        return "UNKNOWN";
     }
 
     /** Soporta shape histórica (id/fileRecordId) y shape de rechazo (fileId). */
@@ -197,6 +278,12 @@ public class FileRecordConsumer implements RabbitListenerConfigurer {
         }
         try {
             return LocalDateTime.parse(value);
+        }
+        catch (Exception ignored) {
+            // Try with timezone/offset, e.g. 2026-04-28T06:30:00Z
+        }
+        try {
+            return OffsetDateTime.parse(value).toLocalDateTime();
         } catch (Exception e) {
             log.warn("Could not parse occurredAt value='{}', defaulting to null", value);
             return null;

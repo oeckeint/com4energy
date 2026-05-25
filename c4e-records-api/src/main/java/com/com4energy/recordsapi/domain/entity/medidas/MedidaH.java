@@ -1,27 +1,37 @@
 package com.com4energy.recordsapi.domain.entity.medidas;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "medidaqh")
-@Getter @Setter
+@Table(name = "medida_h")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MedidaQH {
+public class MedidaH {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_medidaQH")
-    private Integer idMedidaQH;
+    @Column(name = "id_medida_h")
+    private Integer idMedidaH;
 
     @Column(name = "id_cliente", nullable = false)
     private Integer clienteId;
 
-    @Column(name = "tipomed")
-    private Integer tipomed;
+    @Column(name = "tipo_medida")
+    private Integer tipoMedida;
 
     @Column(name = "fecha", nullable = false)
     private LocalDateTime fecha;
@@ -30,55 +40,58 @@ public class MedidaQH {
     private Integer banderaInvVer;
 
     @Column(name = "actent")
-    private Integer actent;
+    private BigDecimal actent;
 
     @Column(name = "qactent")
-    private Integer qactent;
+    private BigDecimal qactent;
 
     @Column(name = "actsal")
-    private Integer actsal;
+    private BigDecimal actsal;
 
     @Column(name = "qactsal")
-    private Integer qactsal;
+    private BigDecimal qactsal;
 
     @Column(name = "r_q1")
-    private Integer r_q1;
+    private BigDecimal r_q1;
 
     @Column(name = "qr_q1")
-    private Integer qr_q1;
+    private BigDecimal qr_q1;
 
     @Column(name = "r_q2")
-    private Integer r_q2;
+    private BigDecimal r_q2;
 
     @Column(name = "qr_q2")
-    private Integer qr_q2;
+    private BigDecimal qr_q2;
 
     @Column(name = "r_q3")
-    private Integer r_q3;
+    private BigDecimal r_q3;
 
     @Column(name = "qr_q3")
-    private Integer qr_q3;
+    private BigDecimal qr_q3;
 
     @Column(name = "r_q4")
-    private Integer r_q4;
+    private BigDecimal r_q4;
 
     @Column(name = "qr_q4")
-    private Integer qr_q4;
+    private BigDecimal qr_q4;
 
     @Column(name = "medres1")
-    private Integer medres1;
+    private BigDecimal medres1;
 
     @Column(name = "qmedres1")
-    private Integer qmedres1;
+    private BigDecimal qmedres1;
 
     @Column(name = "medres2")
-    private Integer medres2;
+    private BigDecimal medres2;
 
     @Column(name = "qmedres2")
-    private Integer qmedres2;
+    private BigDecimal qmedres2;
 
     @Column(name = "metod_obt")
     private Integer metodObt;
+
+    @Column(name = "temporal")
+    private Integer temporal;
 
     @Column(name = "origen")
     private String origen;
@@ -94,7 +107,5 @@ public class MedidaQH {
 
     @Column(name = "updated_by")
     private String updatedBy;
-
-    @Column(name = "temporal")
-    private Integer temporal;
 }
+

@@ -15,6 +15,7 @@ public final class FileRecordPayloadKeys {
     public static final String ORIGINAL_FILENAME = "originalFilename";
     public static final String EXTENSION = "extension";
     public static final String FILE_TYPE = "fileType";
+    public static final String MEASURE_TYPE = "measureType";
     public static final String TYPE = "type";
     public static final String FINAL_PATH = "finalPath";
     public static final String STATUS = "status";
