@@ -42,13 +42,18 @@ c4e:
         FILE_ALREADY_EXISTS:
           exchange: c4e.exchange
           routing-key: c4e.file.already-exists
+        FILE_PROCESSING_STARTED:
+          exchange: c4e.exchange
+          routing-key: c4e.file.processing-started
         FILE_DEFECT_REPORT_CREATED:
           exchange: c4e.exchange
           routing-key: c4e.file.defect-report-created
         FILE_PERSISTENCE_QUARANTINE:
           exchange: c4e.exchange
           routing-key: c4e.file.persistence-quarantine
+        FILE_MEASURE_PROCESSED:
+          exchange: c4e.exchange
+          routing-key: c4e.file.measure-processed
         # CUSTOM_EVENT_EXAMPLE:
         #   exchange: c4e.custom.exchange
         #   routing-key: c4e.custom.routing
-
