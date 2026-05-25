@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
 
 // Formatea números con formato europeo: miles (.) y redondea hacia arriba (Math.ceil)
 const formatEnergyValue = (value: number | null | undefined): string => {
@@ -169,7 +169,25 @@ export interface MeasureActiveFilterPill {
                 <th class="measure-sticky-total measure-sticky-head" [style.min-width.px]="totalColumnWidth">Total</th>
                 @for (clientId of clientIds; track clientId) {
                   <th [style.min-width.px]="clientColumnMinWidth" [class.measure-cross-col]="isColumnActive(clientId)">
-                    <span>{{ clientId }}</span>
+                    <span
+                      class="measure-client-header-chip badge rounded-pill"
+                      [class.bg-success-subtle]="(columnValidation[clientId]?.missing ?? 0) === 0"
+                      [class.bg-danger-subtle]="(columnValidation[clientId]?.missing ?? 0) > 0"
+                      [class.text-success-emphasis]="(columnValidation[clientId]?.missing ?? 0) === 0"
+                      [class.text-danger-emphasis]="(columnValidation[clientId]?.missing ?? 0) > 0"
+                      [class.border]="true"
+                      [class.border-success-subtle]="(columnValidation[clientId]?.missing ?? 0) === 0"
+                      [class.border-danger-subtle]="(columnValidation[clientId]?.missing ?? 0) > 0"
+                      role="button"
+                      tabindex="0"
+                      [attr.aria-label]="'Ver información del cliente ' + clientId"
+                      [attr.title]="'Ver información del cliente ' + clientId"
+                      (click)="selectClientHeader(clientId, $event)"
+                      (keydown.enter)="selectClientHeader(clientId, $event)"
+                      (keydown.space)="selectClientHeader(clientId, $event)"
+                    >
+                      {{ clientId }}
+                    </span>
                     @if ((columnValidation[clientId]?.missing ?? 0) > 0) {
                       <span
                         class="measure-missing-header"
@@ -205,14 +223,25 @@ export interface MeasureActiveFilterPill {
                           'measure-cross-col': isColumnActive(clientId),
                           'measure-cell-selected': isCellSelected(row.hour, clientId)
                         }"
-                        [attr.title]="getCellTitle(row.hour, clientId, getCellValue(row.values, clientId))"
+                        class="measure-cell-origin-host"
                         (mouseenter)="onCellHover(row.hour, clientId, getCellValue(row.values, clientId))"
                         (click)="selectCell(row.hour, clientId, getCellValue(row.values, clientId))"
                       >
                         @if (getCellValue(row.values, clientId) === null) {
                           <span class="measure-missing-mark" title="Registro faltante">&#9888; -</span>
                         } @else {
-                          {{ formatValue(getCellValue(row.values, clientId)) }}
+                          <span class="measure-cell-value">{{ formatValue(getCellValue(row.values, clientId)) }}</span>
+                        }
+
+                        @if (isCellSelected(row.hour, clientId)) {
+                          <div
+                            class="measure-cell-origin-popover"
+                            role="status"
+                            aria-live="polite"
+                            (click)="$event.stopPropagation()"
+                          >
+                            {{ getCellTitle(row.hour, clientId, getCellValue(row.values, clientId)) }}
+                          </div>
                         }
                       </td>
                     }
@@ -370,9 +399,60 @@ export interface MeasureActiveFilterPill {
       </div>
     }
 
-  `
+  `,
+  styles: [`
+    .measure-cell-value {
+      display: inline-block;
+    }
+
+    .measure-cell-origin-popover {
+      position: absolute;
+      left: 50%;
+      top: calc(100% + 8px);
+      transform: translateX(-50%);
+      display: block;
+      max-width: 240px;
+      padding: 6px 9px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #0f172a;
+      font-size: 11px;
+      line-height: 1.3;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+      z-index: 30;
+    }
+
+    .measure-cell-origin-host {
+      position: relative;
+      overflow: visible;
+    }
+
+    .measure-cell-origin-popover::before {
+      content: '';
+      position: absolute;
+      top: -7px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-bottom: 7px solid #cbd5e1;
+    }
+
+    .measure-cell-origin-popover::after {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-bottom: 7px solid #ffffff;
+    }
+  `]
 })
 export class MeasureMatrixTableComponent implements OnChanges {
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly weekdayNames = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
   private readonly monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
@@ -404,6 +484,7 @@ export class MeasureMatrixTableComponent implements OnChanges {
   @Output() headerDateFocusRequested = new EventEmitter<void>();
   @Output() refreshRequested = new EventEmitter<void>();
   @Output() activeFilterRemoved = new EventEmitter<'tarifa' | 'clientes'>();
+  @Output() clientSelected = new EventEmitter<number>();
 
   hoveredHour: string | null = null;
   hoveredClientId: number | null = null;
@@ -497,6 +578,11 @@ export class MeasureMatrixTableComponent implements OnChanges {
 
   requestHeaderDateFocus(): void {
     this.headerDateFocusRequested.emit();
+  }
+
+  selectClientHeader(clientId: number, event?: Event): void {
+    event?.stopPropagation();
+    this.clientSelected.emit(clientId);
   }
 
   onHeaderDateSelected(rawDate: string): void {
@@ -856,13 +942,19 @@ export class MeasureMatrixTableComponent implements OnChanges {
       .then((tooltip) => {
         this.cellOriginCache.set(key, tooltip);
         this.cellOriginError.delete(key);
+        this.cdr.detectChanges();
       })
       .catch(() => {
         this.cellOriginError.add(key);
+        this.cdr.detectChanges();
       })
       .finally(() => {
         this.cellOriginLoading.delete(key);
+        this.cdr.detectChanges();
       });
   }
 }
+
+
+
 

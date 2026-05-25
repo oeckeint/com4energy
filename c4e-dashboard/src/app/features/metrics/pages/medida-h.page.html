@@ -109,17 +109,15 @@
           [class.measure-h-tools-stack--scrolling]="showStackScrollbar"
           (scroll)="onToolsStackScroll()"
         >
+          <app-cliente-info-card [clienteId]="selectedClienteId" />
+
           <app-measure-auditor-panel
             [clientIds]="service.clientIds()"
             [columnValidation]="service.columnValidation()"
             [currentDate]="filters.day"
             [focusDefectuososTrigger]="auditorFocusTrigger"
+            (clienteSelected)="selectClienteInfo($event)"
           />
-
-          <section class="measure-h-tools-placeholder-card" aria-label="Proximo modulo">
-            <div class="measure-h-tools-placeholder-card-title">Proximo modulo</div>
-            <div class="measure-h-tools-placeholder-card-text">Aqui puedes agregar otro card del sidebar sin afectar el estado de clientes.</div>
-          </section>
         </div>
       } @else {
         <div class="measure-h-tools-placeholder">Aqui iremos agregando mas herramientas.</div>
@@ -147,6 +145,7 @@
     (headerNextDayRequested)="shiftTableDay(1)"
     (headerDateSelected)="onTableDateSelected($event)"
     (headerDateFocusRequested)="focusCalendarOnCurrentTableDay()"
+    (clientSelected)="selectClienteInfo($event)"
     (refreshRequested)="applyFilters()"
     (activeFilterRemoved)="onActiveFilterRemoved($event)"
     [statusText]="statusLabel"
@@ -159,4 +158,3 @@
     [exportClientFilterText]="filters.clientIdsText"
   />
 </div>
-

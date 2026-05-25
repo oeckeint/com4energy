@@ -6,13 +6,14 @@ import { MeasureFiltersComponent } from '../components/measure-filters.component
 import { MeasureHourlyMiniChartComponent } from '../components/measure-hourly-mini-chart.component';
 import { MeasureCompletenessGaugeComponent } from '../components/measure-completeness-gauge.component';
 import { MeasureAuditorPanelComponent } from '../components/measure-auditor-panel.component';
+import { ClienteInfoCardComponent } from '../components/cliente-info-card.component';
 
 const HOUR_LABEL_REGEX = /^(\d{2}):\d{2}$/;
 
 @Component({
   selector: 'app-medida-h-page',
   standalone: true,
-  imports: [CommonModule, MeasureFiltersComponent, MeasureCompletenessGaugeComponent, MeasureHourlyMiniChartComponent, MeasureAuditorPanelComponent, MeasureMatrixTableComponent],
+  imports: [CommonModule, MeasureFiltersComponent, MeasureCompletenessGaugeComponent, MeasureHourlyMiniChartComponent, MeasureAuditorPanelComponent, MeasureMatrixTableComponent, ClienteInfoCardComponent],
   templateUrl: './medida-h.page.html',
   styles: [`
     .measure-h-top-layout {
@@ -102,6 +103,19 @@ const HOUR_LABEL_REGEX = /^(\d{2}):\d{2}$/;
       color: #334155;
     }
 
+    .measure-h-tools-button--active {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+      box-shadow: inset 0 0 0 1px #93c5fd;
+    }
+
+    .measure-h-tools-button--active:hover {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
     .measure-h-tools-button:focus-visible {
       outline: 2px solid #93c5fd;
       outline-offset: 1px;
@@ -115,6 +129,11 @@ const HOUR_LABEL_REGEX = /^(\d{2}):\d{2}$/;
       pointer-events: none;
       transition: opacity 0.2s ease;
       z-index: 1398;
+    }
+
+    .measure-h-tools-backdrop--open {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .measure-h-tools-drawer {
@@ -131,6 +150,10 @@ const HOUR_LABEL_REGEX = /^(\d{2}):\d{2}$/;
       z-index: 1401;
       display: flex;
       flex-direction: column;
+    }
+
+    .measure-h-tools-drawer--open {
+      transform: translateX(0);
     }
 
     .measure-h-tools-header {
@@ -169,7 +192,7 @@ const HOUR_LABEL_REGEX = /^(\d{2}):\d{2}$/;
       width: 100%;
       height: 100%;
       overflow-y: auto;
-      padding-right: 8px;
+      padding-inline: 4px;
       scrollbar-width: none;
       -ms-overflow-style: none;
       box-sizing: border-box;
@@ -194,26 +217,6 @@ const HOUR_LABEL_REGEX = /^(\d{2}):\d{2}$/;
       width: 100%;
     }
 
-    .measure-h-tools-placeholder-card {
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      background: #ffffff;
-      padding: 12px;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05);
-    }
-
-    .measure-h-tools-placeholder-card-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: #0f172a;
-      margin-bottom: 4px;
-    }
-
-    .measure-h-tools-placeholder-card-text {
-      font-size: 12px;
-      color: #64748b;
-      line-height: 1.35;
-    }
 
     .measure-h-tools-placeholder {
       border: 1px dashed #cbd5e1;
@@ -263,6 +266,7 @@ export class MedidaHPage implements OnInit, OnDestroy {
   private readonly scrollbarHideDelayMs = 900;
   private stackScrollbarTimer: ReturnType<typeof setTimeout> | null = null;
   calendarSyncToken = 0;
+  selectedClienteId: number | null = null;
   private appliedFilterSnapshot = {
     clientIdsKey: '',
     clientIdsDisplay: '',
@@ -439,6 +443,11 @@ export class MedidaHPage implements OnInit, OnDestroy {
   openAuditorDefectuosos(): void {
     this.activeTool = 'auditor';
     this.auditorFocusTrigger += 1;
+  }
+
+  selectClienteInfo(clienteId: number): void {
+    this.selectedClienteId = clienteId;
+    this.activeTool = 'auditor';
   }
 
   onToolsStackScroll(): void {

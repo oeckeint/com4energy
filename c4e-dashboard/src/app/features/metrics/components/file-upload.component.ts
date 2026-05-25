@@ -9,8 +9,8 @@ import { FileUploadService } from '../services/file-upload.service';
   template: `
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
       <div class="card-header bg-white border-bottom py-3">
-        <h3 class="text-lg font-semibold mb-0">📤 Cargar Archivos de Medición</h3>
-        <p class="text-sm text-muted mt-1 mb-0">Soporta archivos {{ allowedExtensionsForDisplay }} (máximo {{ service.MAX_FILE_SIZE_MB }}MB por archivo, {{ service.MAX_FILES_PER_REQUEST }} archivos y {{ service.MAX_TOTAL_SIZE_MB }}MB por carga)</p>
+        <h3 class="text-lg font-semibold mb-0">📤 Cargar Archivos</h3>
+        <p class="text-sm text-muted mt-1 mb-0">Soporta archivos {{ allowedExtensionsForDisplay }} (máximo {{ service.MAX_FILE_SIZE_MB }}MB por archivo y {{ service.MAX_TOTAL_SIZE_MB }}MB en total por carga)</p>
       </div>
 
       <div class="card-body">
@@ -25,7 +25,7 @@ import { FileUploadService } from '../services/file-upload.service';
           <div class="text-center">
             <div class="fs-1 mb-3">📁</div>
             <p class="mb-2 fw-semibold">Arrastra archivos aquí o haz clic para seleccionar</p>
-            <p class="text-muted small mb-3">Archivos permitidos: {{ allowedExtensionsForDisplay }} | Límite: {{ service.MAX_FILES_PER_REQUEST }} archivos, {{ service.MAX_TOTAL_SIZE_MB }}MB total</p>
+            <p class="text-muted small mb-3">Archivos permitidos: {{ allowedExtensionsForDisplay }} | Límite: {{ service.MAX_TOTAL_SIZE_MB }}MB total por carga</p>
             <button
               type="button"
               class="btn btn-primary btn-sm"
@@ -285,4 +285,3 @@ export class FileUploadComponent implements OnInit, OnDestroy {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   }
 }
-

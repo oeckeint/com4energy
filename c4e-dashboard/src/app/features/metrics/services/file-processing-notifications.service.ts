@@ -8,6 +8,7 @@ export class FileProcessingNotificationsService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelayMs = 1000;
   private readonly MAX_RECONNECT_DELAY_MS = 15000;
+  private localNotificationId = -1;
 
   private readonly notificationsSignal = signal<FileProcessingNotification[]>([]);
   private readonly connectedSignal = signal(false);
@@ -55,6 +56,27 @@ export class FileProcessingNotificationsService {
     this.connectedSignal.set(false);
   }
 
+  notifyProcessingStarted(files: File[]): void {
+    if (!files.length) {
+      return;
+    }
+
+    files.forEach((file) => {
+      this.pushNotification({
+        id: this.nextLocalNotificationId(),
+        eventType: 'FILE_PROCESSING_STARTED',
+        status: 'PROCESSING',
+        filename: file.name,
+        fileType: null,
+        origin: 'API',
+        failureReason: null,
+        comment: 'Procesamiento iniciado. Te avisaremos cuando termine.',
+        occurredAt: new Date().toISOString(),
+        receivedAt: new Date().toISOString()
+      });
+    });
+  }
+
   removeNotification(id: number): void {
     this.notificationsSignal.update(list => list.filter(n => n.id !== id));
   }
@@ -69,6 +91,10 @@ export class FileProcessingNotificationsService {
     setTimeout(() => {
       this.zone.run(() => this.removeNotification(notification.id));
     }, 10000);
+  }
+
+  private nextLocalNotificationId(): number {
+    return this.localNotificationId--;
   }
 
   private scheduleReconnect(): void {
@@ -87,4 +113,3 @@ export class FileProcessingNotificationsService {
     this.eventSource = null;
   }
 }
-

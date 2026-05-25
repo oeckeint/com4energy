@@ -1,85 +1,73 @@
-<header style="padding:12px 16px; border-bottom:1px solid #eee; background:#fff; position: sticky; top: 0; z-index: 100">
-  <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:20px">
-    <div style="display:flex; align-items:center; gap:8px">
-      <div style="background:#1976d2; color:white; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:bold">C4E</div>
-      <h1 style="margin:0;font-size:18px; white-space: nowrap">Dashboard — <span style="font-weight:600">Medidas</span></h1>
+<header class="app-navbar">
+  <div class="app-navbar__inner">
+    <div class="app-navbar__brand">
+      <h1 class="app-navbar__title">Com4Energy</h1>
     </div>
 
-    <!-- Nueva Barra de Navegación con Dropdowns -->
-    <nav style="display:flex; gap:12px; align-items:center">
-      <!-- Dropdown Vistas -->
-      <div class="dropdown">
-        <button class="nav-link" (click)="showVistasDropdown.set(!showVistasDropdown()); showArchivosDropdown.set(false)">
-          <span>Vistas</span>
-          <span class="caret"></span>
-        </button>
-        <div class="dropdown-menu" [class.show]="showVistasDropdown()">
-          <a class="dropdown-item" href="/metrics">Medida QH</a>
-          <a class="dropdown-item" href="/metrics/cch">Medida CCH</a>
-          <a class="dropdown-item" href="/metrics/h">Medida H</a>
+    <div class="app-navbar__right">
+      <nav class="app-navbar__nav">
+        <div #vistasDropdownRoot class="dropdown">
+          <button class="nav-link" (click)="showVistasDropdown.set(!showVistasDropdown()); showArchivosDropdown.set(false)">
+            <span>Medidas</span>
+            <span class="caret"></span>
+          </button>
+          <div class="dropdown-menu" [class.show]="showVistasDropdown()">
+            <a class="dropdown-item" href="/metrics">Medida QH</a>
+            <a class="dropdown-item" href="/metrics/cch">Medida CCH</a>
+            <a class="dropdown-item" href="/metrics/h">Horaria</a>
+          </div>
         </div>
-      </div>
 
-      <!-- Dropdown Archivos -->
-      <div class="dropdown">
-        <button class="nav-link" (click)="showArchivosDropdown.set(!showArchivosDropdown()); showVistasDropdown.set(false)">
-          <span>Archivos</span>
-          <span class="caret"></span>
-        </button>
-        <div class="dropdown-menu" [class.show]="showArchivosDropdown()">
-          <a class="dropdown-item" href="/files/upload">Carga</a>
-          <a class="dropdown-item" href="/files/records">Historial</a>
-          <a class="dropdown-item" href="/files/events">Eventos</a>
+        <span class="app-navbar__separator" aria-hidden="true">|</span>
+
+        <div #archivosDropdownRoot class="dropdown">
+          <button class="nav-link" (click)="showArchivosDropdown.set(!showArchivosDropdown()); showVistasDropdown.set(false)">
+            <span>Archivos</span>
+            <span class="caret"></span>
+          </button>
+          <div class="dropdown-menu" [class.show]="showArchivosDropdown()">
+            <a class="dropdown-item" href="/files/upload">Carga</a>
+            <a class="dropdown-item" href="/files/records">Historial</a>
+            <a class="dropdown-item" href="/files/events">Eventos</a>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
 
-    <!-- Buscador e Info de Cliente -->
-    <div style="margin-left:auto;display:flex;gap:12px;align-items:center">
-      <div style="display:flex; align-items:center; gap:8px; background:#f8f9fa; padding:4px 12px; border-radius:20px; border:1px solid #eee">
-        <span style="font-size:13px; color:#666; font-weight:500">Cliente:</span>
-        <span style="font-weight:600;font-size:15px;color:#000">{{ measurementsService.currentClientId() ?? 'Todos' }}</span>
-      </div>
+      <span class="app-navbar__separator app-navbar__separator--dense" aria-hidden="true">|</span>
 
-      <div style="display:flex; gap:4px; align-items:center">
-        <input #clientIdInput [value]="'3215'" placeholder="ID cliente" style="padding:6px 12px;border:1px solid #ddd;border-radius:20px;width:100px; font-size:13px" />
-        <button
-          #notificationsButton
-          type="button"
-          class="notification-campaign-button"
-          (click)="toggleNotificationsPanel()"
-          [attr.aria-expanded]="showNotificationsPanel()"
-          aria-controls="notification-feed-panel"
-          aria-label="Abrir notificaciones"
-          title="Notificaciones"
-        >
-          <svg class="notification-campaign-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M15 17H9m10-1V11a7 7 0 1 0-14 0v5L3 18v1h18v-1l-2-2Zm-4 4a3 3 0 0 1-6 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          @if (unreadNotificationsCount() > 0) {
-            <span class="notification-campaign-badge">{{ unreadNotificationsCount() }}</span>
-          }
-        </button>
-        <button (click)="selectClient(clientIdInput.value)" style="padding:6px 14px;border-radius:20px;border:none;background:#1976d2;color:#fff; font-size:13px; font-weight:500; cursor:pointer">Ver</button>
-      </div>
+      <button
+        #notificationsButton
+        type="button"
+        class="notification-campaign-button"
+        (click)="toggleNotificationsPanel()"
+        [attr.aria-expanded]="showNotificationsPanel()"
+        aria-controls="notification-feed-panel"
+        aria-label="Notificaciones"
+        title="Notificaciones"
+        data-tooltip="Notificaciones"
+      >
+        <svg class="notification-campaign-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M15 17H9m10-1V11a7 7 0 1 0-14 0v5L3 18v1h18v-1l-2-2Zm-4 4a3 3 0 0 1-6 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        @if (unreadNotificationsCount() > 0) {
+          <span class="notification-campaign-badge">{{ unreadNotificationsCount() }}</span>
+        }
+      </button>
     </div>
   </div>
 </header>
 
-<main style="padding:16px;max-width:1100px;margin:0 auto">
+<main class="app-main">
   <router-outlet></router-outlet>
 </main>
 
-<div
+<button
   class="notification-feed-backdrop"
   [class.notification-feed-backdrop--open]="showNotificationsPanel()"
-  role="button"
-  tabindex="0"
+  type="button"
   aria-label="Cerrar panel de notificaciones"
   (click)="closeNotificationsPanel()"
-  (keydown.enter)="closeNotificationsPanel()"
-  (keydown.space)="closeNotificationsPanel()"
-></div>
+></button>
 
 <aside
   #notificationsPanel
@@ -92,9 +80,9 @@
 >
   <div class="notification-feed-header">
     <strong>Notificaciones</strong>
-    <div style="display:flex; gap:6px; align-items:center">
-      <button type="button" style="padding:4px 8px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#334155;font-size:12px;cursor:pointer" (click)="reloadNotifications()">Actualizar</button>
-      <button type="button" style="width:28px;height:28px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#334155;font-size:18px;line-height:1;cursor:pointer" (click)="closeNotificationsPanel()" aria-label="Cerrar panel">&times;</button>
+    <div class="notification-feed-header__actions">
+      <button type="button" class="notification-feed-header__button" (click)="reloadNotifications()">Actualizar</button>
+      <button type="button" class="notification-feed-header__button notification-feed-header__button--icon" (click)="closeNotificationsPanel()" aria-label="Cerrar panel">&times;</button>
     </div>
   </div>
 
@@ -107,10 +95,10 @@
       <div class="notification-feed-error">{{ fileRecordEventsService.error() }}</div>
     }
 
-    @if (!fileRecordEventsService.loading() && fileRecordEventsService.events()?.data?.length) {
+    @if (!fileRecordEventsService.loading() && notificationPanelItems().length) {
       <div class="notification-feed-list">
-        @for (item of fileRecordEventsService.events()!.data; track item.id) {
-          <article class="notification-card" [class.notification-card--error]="item.failureReason || item.failureReasonDescription">
+        @for (item of notificationPanelItems(); track item.id) {
+          <article class="notification-card" [class.notification-card--error]="isCriticalEvent(item)">
             <div class="notification-card__top">
               <span class="notification-card__title">{{ item.eventType }} · {{ item.status }}</span>
               <span class="notification-card__time">{{ formatEventDate(item.receivedAt) }}</span>
@@ -123,7 +111,7 @@
       </div>
     }
 
-    @if (!fileRecordEventsService.loading() && !fileRecordEventsService.events()?.data?.length) {
+    @if (!fileRecordEventsService.loading() && !notificationPanelItems().length) {
       <div class="notification-feed-empty">Sin eventos por ahora.</div>
     }
   </div>
@@ -136,7 +124,7 @@
     </div>
   }
 
-  @for (item of notificationsService.notifications(); track item.id) {
+  @for (item of toastItems(); track item.id) {
     <article class="realtime-toast" [class.realtime-toast--error]="item.failureReason">
       <div class="realtime-toast__title">{{ item.eventType }} · {{ item.status }}</div>
       <div class="realtime-toast__file">{{ item.filename }}</div>

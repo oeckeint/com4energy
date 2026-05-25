@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, HostListener, Input, NgZone, OnChanges, OnDestroy, Output, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, NgZone, OnChanges, OnDestroy, OnInit, Output, inject } from '@angular/core';
 
 interface MeasureMatrixRow {
   hour: string;
@@ -69,8 +69,9 @@ interface MeasureColumnValidation {
               [attr.cy]="point.y"
               r="2.1"
               class="measure-mini-dot"
-              [attr.title]="point.label + ': ' + point.formattedValue"
-            />
+            >
+              <title>{{ point.label + ': ' + point.formattedValue }}</title>
+            </circle>
           }
 
           @for (tick of miniChartXTicks; track tick.label) {
@@ -80,7 +81,6 @@ interface MeasureColumnValidation {
         @if (weekdayLabel) {
           <div class="measure-mini-weekday">{{ weekdayLabel }}</div>
         }
-        <div class="measure-mini-hover-overlay">Ampliar</div>
       </div>
 
       @if (isModalOpen) {
@@ -128,6 +128,8 @@ interface MeasureColumnValidation {
               tabindex="0"
               (keydown)="onModalChartKeydown($event)"
               (click)="selectModalPoint($event)"
+              (mousemove)="handleModalMouseMoveNative($event)"
+              (mouseleave)="handleModalMouseLeaveNative()"
             >
               <line x1="64" y1="334" x2="860" y2="334" class="measure-mini-axis" />
               <line x1="64" y1="22" x2="64" y2="334" class="measure-mini-axis" />
@@ -175,8 +177,9 @@ interface MeasureColumnValidation {
                   [attr.cy]="point.y"
                   r="3.1"
                   class="measure-mini-dot measure-mini-dot--modal"
-                  [attr.title]="point.label + ': ' + point.formattedValue"
-                />
+                >
+                  <title>{{ point.label + ': ' + point.formattedValue }}</title>
+                </circle>
               }
 
               @for (tick of modalChartXTicks; track tick.label) {
@@ -221,7 +224,9 @@ interface MeasureColumnValidation {
     .measure-mini-chart-card {
       position: relative;
       cursor: default;
-      transition: filter 0.18s ease;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+      overflow: visible;
+      isolation: isolate;
     }
 
     .measure-mini-chart-card--interactive {
@@ -230,30 +235,30 @@ interface MeasureColumnValidation {
 
     .measure-mini-chart-card--interactive:hover,
     .measure-mini-chart-card--interactive:focus-visible {
-      filter: brightness(0.92);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+      border-color: #bfdbfe;
       outline: none;
+      z-index: 10;
     }
 
-    .measure-mini-hover-overlay {
+    .measure-mini-chart-card--interactive:hover::after,
+    .measure-mini-chart-card--interactive:focus-visible::after {
+      content: 'Haz clic para ampliar totales por hora';
       position: absolute;
-      right: 10px;
-      bottom: 8px;
-      font-size: 0.72rem;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.65);
-      color: #f8fafc;
-      opacity: 0;
-      transform: translateY(3px);
-      transition: opacity 0.18s ease, transform 0.18s ease;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(15, 23, 42, 0.9);
+      color: white;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
       pointer-events: none;
+      z-index: 20;
     }
 
-    .measure-mini-chart-card--interactive:hover .measure-mini-hover-overlay,
-    .measure-mini-chart-card--interactive:focus-visible .measure-mini-hover-overlay {
-      opacity: 1;
-      transform: translateY(0);
-    }
 
     .status-emoji {
       font-size: 1.2em;
@@ -523,7 +528,7 @@ interface MeasureColumnValidation {
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy {
+export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy, OnInit {
   private readonly miniChartLeft = 28;
   private readonly miniChartTop = 12;
   private readonly miniChartWidth = 264;
@@ -532,9 +537,8 @@ export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy {
   private readonly modalChartTop = 22;
   private readonly modalChartWidth = 796;
   private readonly modalChartHeight = 312;
-  private readonly numberFormatter = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 });
   private readonly linePrefsStorageKey = 'c4e:measure-mini-chart:line-prefs:v1';
-  private modalSvgElement: SVGElement | null = null;
+  private readonly ngZone = inject(NgZone);
 
   @Input() rows: MeasureMatrixRow[] = [];
   @Input() chartYMax = 0;
@@ -579,23 +583,9 @@ export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy {
   modalAccumulatedYTicks: MiniChartYTick[] = [];
   private hoverFrameId: number | null = null;
   private pendingRelativeX: number | null = null;
-  private readonly onModalMouseMoveNative = (event: MouseEvent) => this.handleModalMouseMoveNative(event);
-  private readonly onModalMouseLeaveNative = () => this.handleModalMouseLeaveNative();
 
-  constructor(private readonly ngZone: NgZone) {
+  ngOnInit(): void {
     this.loadLinePrefs();
-  }
-
-  @ViewChild('modalSvg')
-  set modalSvgRef(ref: ElementRef<SVGElement> | undefined) {
-    const nextEl = ref?.nativeElement ?? null;
-    if (this.modalSvgElement === nextEl) {
-      return;
-    }
-
-    this.detachModalSvgListeners();
-    this.modalSvgElement = nextEl;
-    this.attachModalSvgListeners();
   }
 
   get weekdayLabel(): string {
@@ -631,7 +621,6 @@ export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy {
       cancelAnimationFrame(this.hoverFrameId);
       this.hoverFrameId = null;
     }
-    this.detachModalSvgListeners();
   }
 
   ngOnChanges(): void {
@@ -787,7 +776,7 @@ export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy {
     }
   }
 
-  private handleModalMouseMoveNative(event: MouseEvent): void {
+  protected handleModalMouseMoveNative(event: MouseEvent): void {
     if (this.modalChartPoints.length === 0) {
       this.ngZone.run(() => this.setHoveredModalPoint(null));
       return;
@@ -824,24 +813,13 @@ export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy {
     });
   }
 
-  private handleModalMouseLeaveNative(): void {
+  protected handleModalMouseLeaveNative(): void {
     this.pendingRelativeX = null;
     if (this.hoverFrameId !== null) {
       cancelAnimationFrame(this.hoverFrameId);
       this.hoverFrameId = null;
     }
     this.ngZone.run(() => this.setHoveredModalPoint(null));
-  }
-
-  private attachModalSvgListeners(): void {
-    if (!this.modalSvgElement) {
-      return;
-    }
-
-    this.ngZone.runOutsideAngular(() => {
-      this.modalSvgElement?.addEventListener('mousemove', this.onModalMouseMoveNative, { passive: true });
-      this.modalSvgElement?.addEventListener('mouseleave', this.onModalMouseLeaveNative);
-    });
   }
 
   private loadLinePrefs(): void {
@@ -884,15 +862,6 @@ export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy {
     } catch {
       // Si storage está bloqueado, no interrumpimos UX.
     }
-  }
-
-  private detachModalSvgListeners(): void {
-    if (!this.modalSvgElement) {
-      return;
-    }
-
-    this.modalSvgElement.removeEventListener('mousemove', this.onModalMouseMoveNative);
-    this.modalSvgElement.removeEventListener('mouseleave', this.onModalMouseLeaveNative);
   }
 
   valueToModalY(value: number): number {
@@ -990,7 +959,6 @@ export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy {
       return;
     }
 
-    const count = hourlyTotals.length;
     const dataMax = hourlyTotals.reduce((max, item) => Math.max(max, item.total), 0);
     // Escala completamente dinámica basada en el máximo real del dataset filtrado.
     // Esto evita pisos artificiales (por ejemplo 2500/2800) que distorsionan la posición de puntos.

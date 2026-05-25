@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, SimpleChanges, Output, EventEmitter } from '@angular/core';
 
 interface MeasureColumnValidation {
   expected: number;
@@ -62,24 +62,29 @@ type ClientStatusSubmodule = 'defectuosos' | 'adecuados';
                 <p>{{ emptySubmoduleMessage }}</p>
               </div>
             } @else {
-              @for (clientId of visibleClientIds; track clientId) {
-                <div class="auditor-card"
-                  [class.auditor-card-complete]="isComplete(clientId)"
-                  [class.auditor-card-failed]="!isComplete(clientId)">
-                  <div class="auditor-card-header">
-                    <span class="auditor-client-label">Cliente {{ clientId }}</span>
-                  </div>
-                  <div class="auditor-card-date">{{ formattedDate }}</div>
-                  <div class="auditor-card-status">
-                    @if (isComplete(clientId)) {
-                      <span class="status-complete">✓ Completo</span>
-                    } @else {
-                      <span class="status-failed">⚠ Faltan {{ getMissingCount(clientId) }}</span>
-                    }
-                  </div>
-                </div>
-              }
-            }
+               @for (clientId of visibleClientIds; track clientId) {
+                 <div class="auditor-card"
+                   [class.auditor-card-complete]="isComplete(clientId)"
+                   [class.auditor-card-failed]="!isComplete(clientId)"
+                   (click)="onClienteSelected(clientId)"
+                   role="button"
+                   tabindex="0"
+                   [attr.aria-label]="'Ver información del cliente ' + clientId"
+                   (keydown.enter)="onClienteSelected(clientId)">
+                   <div class="auditor-card-header">
+                     <span class="auditor-client-label">Cliente {{ clientId }}</span>
+                   </div>
+                   <div class="auditor-card-date">{{ formattedDate }}</div>
+                   <div class="auditor-card-status">
+                     @if (isComplete(clientId)) {
+                       <span class="status-complete">✓ Completo</span>
+                     } @else {
+                       <span class="status-failed">⚠ Faltan {{ getMissingCount(clientId) }}</span>
+                     }
+                   </div>
+                 </div>
+               }
+             }
           </div>
         </div>
       </div>
@@ -219,6 +224,18 @@ type ClientStatusSubmodule = 'defectuosos' | 'adecuados';
       padding: 10px;
       font-size: 12px;
       transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .auditor-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+      border-color: #999;
+    }
+
+    .auditor-card:focus-visible {
+      outline: 2px solid #1d4ed8;
+      outline-offset: 1px;
     }
 
     .auditor-card-complete {
@@ -229,10 +246,6 @@ type ClientStatusSubmodule = 'defectuosos' | 'adecuados';
     .auditor-card-failed {
       background: #fef2f2;
       border-color: #fca5a5;
-    }
-
-    .auditor-card:hover {
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .auditor-card-header {
@@ -299,6 +312,7 @@ export class MeasureAuditorPanelComponent implements OnDestroy, OnChanges {
   @Input() columnValidation: Record<string, MeasureColumnValidation> = {};
   @Input() currentDate = new Date().toISOString().slice(0, 10);
   @Input() focusDefectuososTrigger = 0;
+  @Output() clienteSelected = new EventEmitter<number>();
   collapsed = false;
   activeSubmodule: ClientStatusSubmodule = 'defectuosos';
   showCardsScrollbar = false;
@@ -373,6 +387,10 @@ export class MeasureAuditorPanelComponent implements OnDestroy, OnChanges {
   }
 
   getMissingCount(clientId: number): number {
-    return this.columnValidation[String(clientId)]?.missing ?? 0;
+     return this.columnValidation[String(clientId)]?.missing ?? 0;
+   }
+
+  onClienteSelected(clienteId: number): void {
+    this.clienteSelected.emit(clienteId);
   }
 }

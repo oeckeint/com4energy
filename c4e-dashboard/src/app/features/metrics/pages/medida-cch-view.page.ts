@@ -6,16 +6,18 @@ import { MeasureFiltersComponent } from '../components/measure-filters.component
 import { MeasureHourlyMiniChartComponent } from '../components/measure-hourly-mini-chart.component';
 import { MeasureCompletenessGaugeComponent } from '../components/measure-completeness-gauge.component';
 import { MeasureAuditorPanelComponent } from '../components/measure-auditor-panel.component';
+import { ClienteInfoCardComponent } from '../components/cliente-info-card.component';
 
 @Component({
   selector: 'app-medida-cch-page',
   standalone: true,
-  imports: [CommonModule, MeasureFiltersComponent, MeasureCompletenessGaugeComponent, MeasureHourlyMiniChartComponent, MeasureAuditorPanelComponent, MeasureMatrixTableComponent],
+  imports: [CommonModule, MeasureFiltersComponent, MeasureCompletenessGaugeComponent, MeasureHourlyMiniChartComponent, MeasureAuditorPanelComponent, MeasureMatrixTableComponent, ClienteInfoCardComponent],
   templateUrl: './medida-cch.page.html'
 })
 export class MedidaCchPage implements OnInit {
   readonly service = inject(MedidaCchService);
   auditorFocusTrigger = 0;
+  selectedClienteId: number | null = null;
 
   readonly filters = {
     day: this.todayIso(),
@@ -45,6 +47,10 @@ export class MedidaCchPage implements OnInit {
 
   openAuditorDefectuosos(): void {
     this.auditorFocusTrigger += 1;
+  }
+
+  onClienteSelected(clienteId: number): void {
+    this.selectedClienteId = clienteId;
   }
 
   private parseClientIds(raw: string): number[] {

@@ -1,5 +1,5 @@
 import { Component, ElementRef, HostListener, OnDestroy, ViewChild, effect, inject, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { EnergyMeasurementService } from './features/metrics/services/energy-measurement.service';
 import { FileProcessingNotificationsService } from './features/metrics/services/file-processing-notifications.service';
 import { FileRecordEventsService } from './features/metrics/services/file-record-events.service';
@@ -7,7 +7,8 @@ import { FileRecordEventItem } from './features/metrics/models/file-record-event
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  standalone: true,
+  imports: [RouterModule],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
@@ -18,13 +19,13 @@ export class App implements OnDestroy {
   protected readonly fileRecordEventsService = inject(FileRecordEventsService);
 
   // Estados para los dropdowns
-  showVistasDropdown = signal(false);
-  showArchivosDropdown = signal(false);
-  showNotificationsPanel = signal(false);
-  unreadNotificationsCount = signal(0);
-  notificationsPanelTop = signal(84);
-  notificationsPanelLeft = signal(16);
-  private eventsDirty = signal(true);
+  readonly showVistasDropdown = signal(false);
+  readonly showArchivosDropdown = signal(false);
+  readonly showNotificationsPanel = signal(false);
+  readonly unreadNotificationsCount = signal(0);
+  readonly notificationsPanelTop = signal(84);
+  readonly notificationsPanelLeft = signal(16);
+  private readonly eventsDirty = signal(true);
 
   private readonly knownRealtimeIds = new Set<number>();
   private refreshDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -32,10 +33,16 @@ export class App implements OnDestroy {
   private refreshQueued = false;
 
   @ViewChild('notificationsButton')
-  private notificationsButtonRef?: ElementRef<HTMLButtonElement>;
+  private readonly notificationsButtonRef?: ElementRef<HTMLButtonElement>;
 
   @ViewChild('notificationsPanel')
-  private notificationsPanelRef?: ElementRef<HTMLElement>;
+  private readonly notificationsPanelRef?: ElementRef<HTMLElement>;
+
+  @ViewChild('vistasDropdownRoot')
+  private readonly vistasDropdownRootRef?: ElementRef<HTMLElement>;
+
+  @ViewChild('archivosDropdownRoot')
+  private readonly archivosDropdownRootRef?: ElementRef<HTMLElement>;
 
   constructor() {
     // Cargar por defecto el cliente 3215 al iniciar la aplicación
@@ -44,17 +51,19 @@ export class App implements OnDestroy {
 
     effect(() => {
       const realtimeItems = this.notificationsService.notifications();
-      let newItems = 0;
+      let newTerminalItems = 0;
 
       for (const item of realtimeItems) {
         if (!this.knownRealtimeIds.has(item.id)) {
           this.knownRealtimeIds.add(item.id);
-          newItems++;
+          if (this.isTerminalStatus(item.status)) {
+            newTerminalItems++;
+          }
         }
       }
 
-      if (newItems > 0) {
-        this.unreadNotificationsCount.update((current) => Math.min(current + newItems, 99));
+      if (newTerminalItems > 0) {
+        this.unreadNotificationsCount.update((current) => Math.min(current + newTerminalItems, 99));
         this.eventsDirty.set(true);
         this.scheduleEventsRefresh();
       }
@@ -103,6 +112,25 @@ export class App implements OnDestroy {
     }
   }
 
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as Node | null;
+    if (!target) {
+      return;
+    }
+
+    const clickedInsideVistas = this.vistasDropdownRootRef?.nativeElement.contains(target) ?? false;
+    const clickedInsideArchivos = this.archivosDropdownRootRef?.nativeElement.contains(target) ?? false;
+
+    if (!clickedInsideVistas) {
+      this.showVistasDropdown.set(false);
+    }
+
+    if (!clickedInsideArchivos) {
+      this.showArchivosDropdown.set(false);
+    }
+  }
+
   formatEventDate(value: string | null): string {
     if (!value) return 'Ahora';
     const date = new Date(value);
@@ -115,7 +143,37 @@ export class App implements OnDestroy {
     });
   }
 
+  notificationPanelItems(): FileRecordEventItem[] {
+    const events = this.fileRecordEventsService.events()?.data ?? [];
+    return events.filter(item => this.isTerminalStatus(item.status));
+  }
+
+  toastItems() {
+    return this.notificationsService.notifications().filter(item => {
+      const status = (item.status || '').toUpperCase();
+      const isStarted = item.eventType === 'FILE_PROCESSING_STARTED' || status === 'PROCESSING';
+      const isMeasureFinished = item.eventType === 'FILE_MEASURE_PROCESSED' && this.isTerminalStatus(status);
+      return isStarted || isMeasureFinished;
+    });
+  }
+
+  isCriticalEvent(item: FileRecordEventItem): boolean {
+    const status = (item.status || '').toUpperCase();
+    if (status === 'SUCCEEDED') {
+      return false;
+    }
+    return !!item.failureReason || status === 'FAILED' || status === 'REJECTED' || status === 'ERROR';
+  }
+
   eventSnippet(item: FileRecordEventItem): string {
+    if (item.eventType === 'FILE_MEASURE_PROCESSED' && (item.status || '').toUpperCase() === 'SUCCEEDED') {
+      const summary = this.buildMeasureProcessedSummary(item.metadataJson);
+      if (summary) {
+        return summary;
+      }
+      return 'Procesamiento completado correctamente.';
+    }
+
     if (item.failureReasonDescription) return item.failureReasonDescription;
     if (item.failureReason) return item.failureReason;
     if (item.metadataJson) {
@@ -127,7 +185,48 @@ export class App implements OnDestroy {
         return item.metadataJson;
       }
     }
+
+    if ((item.status || '').toUpperCase() === 'SUCCEEDED') {
+      return 'Procesamiento finalizado correctamente.';
+    }
+
     return 'Evento registrado correctamente.';
+  }
+
+  private buildMeasureProcessedSummary(metadataJson: string | null): string | null {
+    if (!metadataJson) {
+      return null;
+    }
+
+    try {
+      const metadata = JSON.parse(metadataJson) as {
+        persisted?: number;
+        total?: number;
+        defects?: number;
+        totalMs?: number;
+      };
+
+      const persisted = typeof metadata.persisted === 'number' ? metadata.persisted : null;
+      const total = typeof metadata.total === 'number' ? metadata.total : null;
+      const defects = typeof metadata.defects === 'number' ? metadata.defects : null;
+      const totalMs = typeof metadata.totalMs === 'number' ? metadata.totalMs : null;
+
+      if (persisted === null && total === null) {
+        return null;
+      }
+
+      const counts = total !== null ? `${persisted ?? 0}/${total}` : String(persisted ?? 0);
+      const defectsPart = defects !== null ? `, defectos: ${defects}` : '';
+      const durationPart = totalMs !== null ? `, ${totalMs} ms` : '';
+      return `Procesado: ${counts} registros${defectsPart}${durationPart}.`;
+    } catch {
+      return null;
+    }
+  }
+
+  private isTerminalStatus(status: string | null | undefined): boolean {
+    const value = (status || '').toUpperCase();
+    return value === 'SUCCEEDED' || value === 'FAILED' || value === 'REJECTED' || value === 'ERROR';
   }
 
   private scheduleEventsRefresh(): void {
@@ -143,17 +242,17 @@ export class App implements OnDestroy {
 
   private positionNotificationsPanel(): void {
     const button = this.notificationsButtonRef?.nativeElement;
-    if (!button || typeof window === 'undefined') {
+    if (!button || typeof globalThis.window === 'undefined') {
       return;
     }
 
     const rect = button.getBoundingClientRect();
-    const panelWidth = this.notificationsPanelRef?.nativeElement.offsetWidth ?? Math.min(430, window.innerWidth - 16);
+    const panelWidth = this.notificationsPanelRef?.nativeElement.offsetWidth ?? Math.min(430, globalThis.window.innerWidth - 16);
     const horizontalMargin = 8;
     const topOffset = 8;
 
     const idealLeft = rect.right - panelWidth;
-    const maxLeft = Math.max(horizontalMargin, window.innerWidth - panelWidth - horizontalMargin);
+    const maxLeft = Math.max(horizontalMargin, globalThis.window.innerWidth - panelWidth - horizontalMargin);
     const left = Math.min(Math.max(idealLeft, horizontalMargin), maxLeft);
     const top = rect.bottom + topOffset;
 

@@ -39,7 +39,11 @@
         [columnValidation]="service.columnValidation()"
         [currentDate]="filters.day"
         [focusDefectuososTrigger]="auditorFocusTrigger"
+        (clienteSelected)="onClienteSelected($event)"
       />
+      <div class="mt-4">
+        <app-cliente-info-card [clienteId]="selectedClienteId" />
+      </div>
     </div>
   </div>
 
@@ -64,7 +68,7 @@
     [exportMeasureType]="'Medida CCH'"
     [exportDate]="filters.day"
     [exportClientFilterText]="filters.clientIdsText"
+    (clientSelected)="onClienteSelected($event)"
     (refreshRequested)="applyFilters()"
   />
 </div>
-

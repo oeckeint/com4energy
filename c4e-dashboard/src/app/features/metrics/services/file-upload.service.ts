@@ -24,9 +24,8 @@ export class FileUploadService {
    * Allowed file extensions
    */
   readonly ALLOWED_EXTENSIONS = ['xml', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-  readonly MAX_FILES_PER_REQUEST = 3;
   readonly MAX_FILE_SIZE_MB = 50;
-  readonly MAX_TOTAL_SIZE_MB = 150;
+  readonly MAX_TOTAL_SIZE_MB = 500;
 
   /**
    * Upload files to the ingestion service
@@ -75,9 +74,6 @@ export class FileUploadService {
    * Validate files before upload
    */
   private validateFiles(files: File[]): string | null {
-    if (files.length > this.MAX_FILES_PER_REQUEST) {
-      return `Solo se permiten ${this.MAX_FILES_PER_REQUEST} archivos por carga`;
-    }
 
     const totalSizeBytes = files.reduce((sum, file) => sum + file.size, 0);
     if (totalSizeBytes > this.MAX_TOTAL_SIZE_MB * 1024 * 1024) {
@@ -180,8 +176,3 @@ export class FileUploadService {
     this.progressSignal.set(0);
   }
 }
-
-
-
-
-

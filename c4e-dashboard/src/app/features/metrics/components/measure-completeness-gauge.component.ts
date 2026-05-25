@@ -56,18 +56,21 @@ interface MeasureColumnValidation {
       cursor: pointer;
       transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
       position: relative;
+      overflow: visible;
+      isolation: isolate;
     }
 
     .measure-gauge-card:not(.measure-gauge-card--empty):hover {
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
       border-color: #bfdbfe;
+      z-index: 10;
     }
 
     .measure-gauge-card:not(.measure-gauge-card--empty):hover::after {
       content: 'Haz clic para ver defectuosos';
       position: absolute;
-      bottom: -28px;
+      bottom: calc(100% + 10px);
       left: 50%;
       transform: translateX(-50%);
       background-color: rgba(15, 23, 42, 0.9);
@@ -76,7 +79,7 @@ interface MeasureColumnValidation {
       border-radius: 4px;
       font-size: 11px;
       white-space: nowrap;
-      z-index: 1000;
+      z-index: 20;
       pointer-events: none;
     }
 
@@ -209,7 +212,7 @@ export class MeasureCompletenessGaugeComponent {
 
   get statusEmoji(): string {
     if (this.totalClients === 0) return '🤔';
-    if (this.okRatio >= 1.0) return '😄';
+    if (this.okRatio >= 1) return '😄';
     if (this.okRatio >= 0.7) return '😊';
     if (this.okRatio >= 0.4) return '😐';
     return '😞';
@@ -218,7 +221,7 @@ export class MeasureCompletenessGaugeComponent {
   get statusTooltip(): string {
     if (this.totalClients === 0) return 'Sin datos - Esperando información';
     const percentage = Math.round(this.okRatio * 100);
-    if (this.okRatio >= 1.0) return `${percentage}% OK - ¡Perfecto!`;
+    if (this.okRatio >= 1) return `${percentage}% OK - ¡Perfecto!`;
     if (this.okRatio >= 0.7) return `${percentage}% OK - Muy bien`;
     if (this.okRatio >= 0.4) return `${percentage}% OK - Revisar`;
     return `${percentage}% OK - Atención requerida`;

@@ -1,3 +1,66 @@
+.app-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 12px 16px;
+  border-bottom: 1px solid #bfdbfe;
+  background: var(--bs-primary-bg-subtle, #cfe2ff);
+}
+
+.app-navbar__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.app-navbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.app-navbar__title {
+  margin: 0;
+  font-size: 18px;
+  white-space: nowrap;
+  color: #0b5ed7;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.app-navbar__nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-navbar__separator {
+  color: rgba(31, 41, 55, 0.45);
+  font-size: 14px;
+  line-height: 1;
+  user-select: none;
+}
+
+.app-navbar__separator--dense {
+  margin-left: 2px;
+}
+
+.app-navbar__right {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.app-main {
+  padding: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
 .dropdown {
   position: relative;
   display: inline-block;
@@ -45,7 +108,7 @@
 
 .dropdown-item:hover {
   background-color: #f8f9fa;
-  color: #1976d2;
+  color: #1f2937;
 }
 
 .dropdown-divider {
@@ -60,7 +123,7 @@
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  color: #444;
+  color: #1f2937;
   text-decoration: none;
   border-radius: 6px;
   transition: all 0.2s;
@@ -68,8 +131,7 @@
 }
 
 .nav-link:hover {
-  background-color: #f0f7ff;
-  color: #1976d2;
+  background-color: rgba(13, 110, 253, 0.12);
 }
 
 .caret::after {
@@ -84,22 +146,71 @@
 
 .notification-campaign-button {
   position: relative;
-  width: 32px;
-  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
   border: none;
   border-radius: 999px;
   background: transparent;
-  color: #475569;
+  color: #1f2937;
   line-height: 1;
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+.notification-campaign-button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  transform: translateY(4px) scale(0.98);
+  opacity: 0;
+  pointer-events: none;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(17, 24, 39, 0.96);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.24);
+  backdrop-filter: blur(8px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 1300;
+}
+
+.notification-campaign-button::before {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: calc(100% + 4px);
+  opacity: 0;
+  pointer-events: none;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid rgba(17, 24, 39, 0.96);
+  transition: opacity 0.15s ease;
+  z-index: 1300;
+}
+
+.notification-campaign-button:hover::after,
+.notification-campaign-button:focus-visible::after,
+.notification-campaign-button:hover::before,
+.notification-campaign-button:focus-visible::before {
+  opacity: 1;
+}
+
+.notification-campaign-button:hover::after,
+.notification-campaign-button:focus-visible::after {
+  transform: translateY(0) scale(1);
+}
+
 .notification-campaign-button:hover {
-  background: #e2e8f0;
-  color: #1f2937;
+  background: rgba(13, 110, 253, 0.12);
 }
 
 .notification-campaign-icon {
@@ -115,8 +226,8 @@
   height: 18px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #d32f2f;
-  color: #fff;
+  background: #fff;
+  color: #1570ef;
   font-size: 10px;
   font-weight: 700;
   display: grid;
@@ -127,6 +238,9 @@
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.3);
+  border: 0;
+  padding: 0;
+  appearance: none;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
@@ -169,6 +283,29 @@
   padding: 10px 12px;
   border-bottom: 1px solid #e5e7eb;
   background: #f8fafc;
+}
+
+.notification-feed-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notification-feed-header__button {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.notification-feed-header__button--icon {
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+  line-height: 1;
 }
 
 .notification-feed-body {
