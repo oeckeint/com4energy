@@ -9,18 +9,18 @@ services:
       - "7001:8080"
     environment:
       # Base de datos existente (contenedor externo en com4energy-net)
-      - DB_HOST=${DB_HOST_DOCKER:-database}
-      - DB_PORT=${DB_PORT:-3306}
+      - DB_HOST=${DB_HOST_DOCKER:?Define DB_HOST_DOCKER en tu entorno o carga ~/.sistema_gestion_env.sh}
+      - DB_PORT=${DB_PORT:?Define DB_PORT en tu entorno o carga ~/.sistema_gestion_env.sh}
       - SGE_LOCAL_DB_ROOT_PWD=${SGE_LOCAL_DB_ROOT_PWD:?Define SGE_LOCAL_DB_ROOT_PWD en tu entorno o carga ~/.sistema_gestion_env.sh}
       - SGE_LOCAL_DB_NAME=${SGE_LOCAL_DB_NAME:?Define SGE_LOCAL_DB_NAME en tu entorno o carga ~/.sistema_gestion_env.sh}
-      - DB_URL_SGE=${DB_URL_SGE_DOCKER:-jdbc:mysql://database:3306/sge}
+      - DB_URL_SGE=${DB_URL_SGE_DOCKER:?Define DB_URL_SGE_DOCKER en tu entorno o carga ~/.sistema_gestion_env.sh}
       - DB_USER_SGE=${DB_USER_SGE:?Define DB_USER_SGE en tu entorno o carga ~/.sistema_gestion_env.sh}
       - DB_PASSWORD_SGE=${DB_PASSWORD_SGE:?Define DB_PASSWORD_SGE en tu entorno o carga ~/.sistema_gestion_env.sh}
       # RabbitMQ (contenedor externo)
-      - RABBITMQ_HOST=${RABBITMQ_HOST_DOCKER:-rabbitmq}
-      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_HOST=${RABBITMQ_HOST_DOCKER:?Define RABBITMQ_HOST_DOCKER en tu entorno o carga ~/.sistema_gestion_env.sh}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:?Define RABBITMQ_PORT en tu entorno o carga ~/.sistema_gestion_env.sh}
+      - RABBITMQ_USER=${RABBITMQ_USER:?Define RABBITMQ_USER en tu entorno o carga ~/.sistema_gestion_env.sh}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:?Define RABBITMQ_PASSWORD en tu entorno o carga ~/.sistema_gestion_env.sh}
       # Raiz de almacenamiento dentro del contenedor (alineada con path.yml)
       - C4E_STORAGE_ROOT=/usr/local/tomcat/resources
       # SFTP
