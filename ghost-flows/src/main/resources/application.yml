@@ -5,6 +5,9 @@ spring:
     auto-startup: true
     job-store-type: memory
 
+server:
+  port: 8084
+
 mysql:
   host: ${DB_HOST}
   database: ${SGE_LOCAL_DB_NAME}

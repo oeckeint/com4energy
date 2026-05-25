@@ -10,9 +10,9 @@ services:
       - .env
     volumes:
       - ${DATABASE_BACKUP_PATH}:/app/database/backups
-      - ${MY_CNF_FILE}:/root/.my.cnf
+      - ${C4E_MY_CNF_FILE:?C4E_MY_CNF_FILE is required}:/root/.my.cnf
     ports:
-      - "8082:8080"
+      - "${C4E_GHOST_FLOWS_PORT:?C4E_GHOST_FLOWS_PORT is required}:8084"
     networks:
       - com4energy-net
     restart: always
