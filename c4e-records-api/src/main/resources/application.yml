@@ -77,6 +77,13 @@ c4e:
         routingKey: c4e.file.already-exists
         deadLetterExchange: c4e.file.record.already-exists.dlx
         deadLetterQueue: c4e.file.record.already-exists.dlq
+      registered:
+        eventType: FILE_REGISTERED
+        queue: c4e.file.record.registered.queue
+        exchange: c4e.exchange
+        routingKey: c4e.file.registered
+        deadLetterExchange: c4e.file.record.registered.dlx
+        deadLetterQueue: c4e.file.record.registered.dlq
       processingStarted:
         eventType: FILE_PROCESSING_STARTED
         queue: c4e.file.record.processing-started.queue
@@ -99,10 +106,10 @@ c4e:
         deadLetterExchange: c4e.file.record.persistence-quarantine.dlx
         deadLetterQueue: c4e.file.record.persistence-quarantine.dlq
       measureProcessed:
-        eventType: FILE_MEASURE_PROCESSED
+        eventType: FILE_PROCESSING_PROCESSED
         queue: c4e.file.record.measure-processed.queue
         exchange: c4e.exchange
-        routingKey: c4e.file.measure-processed
+        routingKey: c4e.file.processing-processed
         deadLetterExchange: c4e.file.record.measure-processed.dlx
         deadLetterQueue: c4e.file.record.measure-processed.dlq
 

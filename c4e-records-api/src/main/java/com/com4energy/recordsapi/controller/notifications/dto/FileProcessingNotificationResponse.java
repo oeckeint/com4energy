@@ -13,6 +13,7 @@ public record FileProcessingNotificationResponse(
         String fileType,
         String origin,
         String failureReason,
+        String failureReasonDescription,
         String comment,
         LocalDateTime occurredAt,
         LocalDateTime receivedAt

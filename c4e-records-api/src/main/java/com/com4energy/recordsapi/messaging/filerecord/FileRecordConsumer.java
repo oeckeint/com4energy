@@ -48,6 +48,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -64,8 +65,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class FileRecordConsumer implements RabbitListenerConfigurer {
 
+    private static final String FILE_REGISTERED = "FILE_REGISTERED";
     private static final String FILE_MEASURE_PROCESSED = "FILE_MEASURE_PROCESSED";
+    private static final String FILE_PROCESSING_PROCESSED = "FILE_PROCESSING_PROCESSED";
+    private static final String FILE_PROCESSING_STARTED = "FILE_PROCESSING_STARTED";
     private static final String STATUS_SUCCEEDED = "SUCCEEDED";
+    private static final DateTimeFormatter REGISTRATION_TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final FileRecordRoutingProperties props;
     private final FileRecordEventRepository repository;
@@ -86,7 +91,9 @@ public class FileRecordConsumer implements RabbitListenerConfigurer {
                     String eventType = resolveEventType(typeKey, config, payload);
                     FileRecordEvent entity = mapToEntity(payload, eventType);
                     FileRecordEvent saved = repository.save(entity);
-                    notificationSseService.publish(saved);
+                    if (shouldPublishNotification(saved.getEventType())) {
+                        notificationSseService.publish(saved);
+                    }
 
                     log.info(Messages.format(RecordsApiCommonMessageKey.FILE_RECORD_EVENT_SAVED,
                             eventType, saved.getId(), saved.getFilename()));
@@ -147,12 +154,16 @@ public class FileRecordConsumer implements RabbitListenerConfigurer {
     }
 
     private String resolveFailureReasonDescription(String eventType, Map<String, Object> payload, String sourceId) {
+        if (isFileRegisteredEvent(eventType)) {
+            return buildInitialRegistrationDescription(parseDateTime(getString(payload, OCCURRED_AT)));
+        }
+
         String fromPayload = getString(payload, REASON_DESCRIPTION);
         if (fromPayload != null && !fromPayload.isBlank()) {
             return fromPayload;
         }
 
-        if (!FILE_MEASURE_PROCESSED.equalsIgnoreCase(eventType)) {
+        if (!isFileProcessingProcessedEvent(eventType)) {
             return null;
         }
 
@@ -174,6 +185,31 @@ public class FileRecordConsumer implements RabbitListenerConfigurer {
                 + " totalMs=" + valueOrDash(metadata.get("totalMs"))
                 + " parseMs=" + valueOrDash(metadata.get("parseMs"))
                 + " persistMs=" + valueOrDash(metadata.get("persistMs"));
+    }
+
+    private String buildInitialRegistrationDescription(LocalDateTime uploadedAt) {
+        if (uploadedAt == null) {
+            return "Registrado en file_records (PENDING): -";
+        }
+        return "Registrado en file_records (PENDING): " + uploadedAt.format(REGISTRATION_TIMESTAMP_FORMAT);
+    }
+
+    private boolean shouldPublishNotification(String eventType) {
+        // FILE_PROCESSING_STARTED no genera toast (es ruido interno de inicio de proceso)
+        return !isFileProcessingStartedEvent(eventType);
+    }
+
+    private boolean isFileRegisteredEvent(String eventType) {
+        return FILE_REGISTERED.equalsIgnoreCase(eventType);
+    }
+
+    private boolean isFileProcessingStartedEvent(String eventType) {
+        return FILE_PROCESSING_STARTED.equalsIgnoreCase(eventType);
+    }
+
+    private boolean isFileProcessingProcessedEvent(String eventType) {
+        return FILE_PROCESSING_PROCESSED.equalsIgnoreCase(eventType)
+                || FILE_MEASURE_PROCESSED.equalsIgnoreCase(eventType);
     }
 
     private Map<String, Object> toMetadataMap(Object metadataRaw) {
@@ -211,7 +247,7 @@ public class FileRecordConsumer implements RabbitListenerConfigurer {
         if (fromPayload != null && !fromPayload.isBlank()) {
             return fromPayload;
         }
-        if (FILE_MEASURE_PROCESSED.equalsIgnoreCase(eventType)) {
+        if (isFileProcessingProcessedEvent(eventType)) {
             return STATUS_SUCCEEDED;
         }
         return "UNKNOWN";

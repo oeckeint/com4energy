@@ -57,6 +57,7 @@ public class FileProcessingNotificationSseService {
                 .fileType(event.getFileType())
                 .origin(event.getOrigin())
                 .failureReason(event.getFailureReason())
+                .failureReasonDescription(event.getFailureReasonDescription())
                 .comment(event.getComment())
                 .occurredAt(event.getOccurredAt())
                 .receivedAt(event.getReceivedAt())

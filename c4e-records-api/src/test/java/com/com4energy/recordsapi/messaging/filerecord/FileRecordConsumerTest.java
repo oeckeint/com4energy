@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,6 +51,52 @@ class FileRecordConsumerTest {
         assertNotNull(entity.getRawPayload());
         assertTrue(entity.getMetadataJson().contains("\"phase\":\"validation\""));
         assertTrue(entity.getRawPayload().contains("\"originalFilename\":\"P1D_0021_0894_20240104.0\""));
+    }
+
+    @Test
+    void mapToEntitySetsInitialPendingRegistrationDescriptionForFileRegistered() throws Exception {
+        FileRecordConsumer consumer = new FileRecordConsumer(
+                new FileRecordRoutingProperties(),
+                org.mockito.Mockito.mock(FileRecordEventRepository.class),
+                new ObjectMapper(),
+                org.mockito.Mockito.mock(FileProcessingNotificationSseService.class)
+        );
+
+        Map<String, Object> payload = Map.of(
+                "fileRecordId", 81,
+                "eventType", "FILE_REGISTERED",
+                "originalFilename", "P2D_0021_0894_20240104.0",
+                "occurredAt", "2026-05-25T14:03:09"
+        );
+
+        Method mapToEntity = FileRecordConsumer.class.getDeclaredMethod("mapToEntity", Map.class, String.class);
+        mapToEntity.setAccessible(true);
+        FileRecordEvent entity = (FileRecordEvent) mapToEntity.invoke(consumer, payload, "FILE_REGISTERED");
+
+        assertEquals("Registrado en file_records (PENDING): 2026-05-25 14:03:09", entity.getFailureReasonDescription());
+    }
+
+    @Test
+    void shouldPublishNotificationReturnsFalseForFileRegistered() throws Exception {
+        FileRecordConsumer consumer = new FileRecordConsumer(
+                new FileRecordRoutingProperties(),
+                org.mockito.Mockito.mock(FileRecordEventRepository.class),
+                new ObjectMapper(),
+                org.mockito.Mockito.mock(FileProcessingNotificationSseService.class)
+        );
+
+        Method method = FileRecordConsumer.class.getDeclaredMethod("shouldPublishNotification", String.class);
+        method.setAccessible(true);
+
+        // FILE_REGISTERED → sí debe publicar toast (evento de alta visible al usuario)
+        boolean publishForRegistered = (boolean) method.invoke(consumer, "FILE_REGISTERED");
+        // FILE_PROCESSING_STARTED → NO debe publicar (ruido interno de inicio de proceso)
+        boolean publishForStarted = (boolean) method.invoke(consumer, "FILE_PROCESSING_STARTED");
+        boolean publishForRejected = (boolean) method.invoke(consumer, "FILE_REJECTED");
+
+        assertTrue(publishForRegistered);
+        assertFalse(publishForStarted);
+        assertTrue(publishForRejected);
     }
 }
 
