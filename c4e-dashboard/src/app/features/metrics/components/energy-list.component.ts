@@ -1,11 +1,18 @@
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EnergyMeasurementService } from '../services/energy-measurement.service';
+import { BadgeComponent } from '../../../shared/components/badge';
+
+// Formatea números con formato europeo: miles (.) y redondea hacia arriba (Math.ceil)
+const formatEnergyValue = (value: number | null | undefined): string => {
+  if (value === null || value === undefined) return '-';
+  return Math.ceil(value).toLocaleString('es-ES');
+};
 
 @Component({
   selector: 'app-energy-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, BadgeComponent],
   template: `
     <div class="p-4">
       @if (service.rawMeasurements().length > 0) {
@@ -17,22 +24,22 @@ import { EnergyMeasurementService } from '../services/energy-measurement.service
                 <h3 class="text-lg font-semibold mb-0">Resumen de Medida QH</h3>
               </div>
               <div class="card-body">
-                <div class="flex flex-wrap gap-2">
-                  <div class="btn btn-sm border border-primary text-primary bg-primary-subtle rounded-pill px-3 shadow-sm">
-                    <strong>Total:</strong> {{ service.rawMeasurements().length }}
-                  </div>
-                  <div class="btn btn-sm border border-secondary text-secondary bg-secondary-subtle rounded-pill px-3 shadow-sm">
-                    <strong>Energía:</strong> {{ service.totalDailyConsumption().toFixed(2) }} kWh
-                  </div>
-                  <div class="btn btn-sm border border-danger text-danger bg-danger-subtle rounded-pill px-3 shadow-sm">
-                    <strong>Máx:</strong> {{ service.maxConsumption().toFixed(2) }} kWh
-                  </div>
-                  <div class="btn btn-sm border border-success text-success bg-success-subtle rounded-pill px-3 shadow-sm">
-                    <strong>Mín:</strong> {{ service.minConsumption().toFixed(2) }} kWh
-                  </div>
-                  <div class="btn btn-sm border border-warning text-warning bg-warning-subtle rounded-pill px-3 shadow-sm">
-                    <strong>Prom:</strong> {{ service.avgConsumption().toFixed(2) }} kWh
-                  </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <c4e-badge variant="primary" icon="📊">
+                    <strong>Total:</strong>&nbsp;{{ service.rawMeasurements().length }}
+                  </c4e-badge>
+                  <c4e-badge variant="info" icon="⚡">
+                    <strong>Energía:</strong>&nbsp;{{ formatEnergyValue(service.totalDailyConsumption()) }} kWh
+                  </c4e-badge>
+                  <c4e-badge variant="danger" icon="▲">
+                    <strong>Máx:</strong>&nbsp;{{ formatEnergyValue(service.maxConsumption()) }} kWh
+                  </c4e-badge>
+                  <c4e-badge variant="success" icon="▼">
+                    <strong>Mín:</strong>&nbsp;{{ formatEnergyValue(service.minConsumption()) }} kWh
+                  </c4e-badge>
+                  <c4e-badge variant="warning" icon="~">
+                    <strong>Prom:</strong>&nbsp;{{ formatEnergyValue(service.avgConsumption()) }} kWh
+                  </c4e-badge>
                 </div>
               </div>
             </div>
@@ -89,4 +96,5 @@ import { EnergyMeasurementService } from '../services/energy-measurement.service
 })
 export class EnergyListComponent {
   service = inject(EnergyMeasurementService);
+  formatEnergyValue = formatEnergyValue;
 }

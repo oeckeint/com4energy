@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EnergyListComponent } from '../components/energy-list.component';
 import { EnergyChartComponent } from '../components/energy-chart.component';

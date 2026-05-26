@@ -1,6 +1,5 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { signal, computed } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
   EnergyMeasurement,
@@ -10,16 +9,17 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class EnergyMeasurementService {
-  private http = inject(HttpClient);
+  private readonly http = inject(HttpClient);
 
   // API path for measurements.
-  private readonly API_MEASUREMENTS_PATH = '/api/medidaqh'; // proxy to 8082
+  private readonly API_MEASUREMENTS_PATH = '/api/v1/medidaqh'; // proxy to records-api:8082
+  private readonly API_MEASUREMENTS_LAST24H_PATH = `${this.API_MEASUREMENTS_PATH}/last24h`;
 
-  private rawMeasurementsSignal = signal<EnergyMeasurement[]>([]);
-  private loadingSignal = signal(false);
-  private errorSignal = signal<string | null>(null);
-  private currentPageSignal = signal(0);
-  private currentClientIdSignal = signal<number | null>(null);
+  private readonly rawMeasurementsSignal = signal<EnergyMeasurement[]>([]);
+  private readonly loadingSignal = signal(false);
+  private readonly errorSignal = signal<string | null>(null);
+  private readonly currentPageSignal = signal(0);
+  private readonly currentClientIdSignal = signal<number | null>(null);
 
   rawMeasurements = this.rawMeasurementsSignal.asReadonly();
   loading = this.loadingSignal.asReadonly();
@@ -80,7 +80,7 @@ export class EnergyMeasurementService {
     this.http.get<EnergyMeasurementResponse>(`${this.API_MEASUREMENTS_PATH}?${params.toString()}`)
       .subscribe({
         next: (response) => {
-          this.rawMeasurementsSignal.set(response.content || []);
+          this.rawMeasurementsSignal.set(this.extractMeasurements(response));
           this.currentPageSignal.set(response.number || 0);
           this.loadingSignal.set(false);
         },
@@ -119,7 +119,7 @@ export class EnergyMeasurementService {
 
         const url = `${this.API_MEASUREMENTS_PATH}?${params.toString()}`;
         const resp = await firstValueFrom(this.http.get<EnergyMeasurementResponse>(url));
-        accumulated.push(...(resp.content || []));
+        accumulated.push(...this.extractMeasurements(resp));
 
         // Decide whether to continue based on backend metadata
         if (typeof resp.totalPages === 'number') {
@@ -144,6 +144,10 @@ export class EnergyMeasurementService {
       this.currentPageSignal.set(0);
       this.loadingSignal.set(false);
     } catch (err: any) {
+      if (this.shouldFallbackToLast24h(err, startDate, endDate)) {
+        await this.fetchAllLast24h(clientId, pageSize);
+        return;
+      }
       this.errorSignal.set(err?.error?.message || err?.message || 'Error loading measurements');
       this.loadingSignal.set(false);
     }
@@ -154,6 +158,39 @@ export class EnergyMeasurementService {
     const end = new Date();
     const start = new Date(Date.now() - 24 * 60 * 60 * 1000);
     return this.fetchAllMeasurements(clientId, start.toISOString(), end.toISOString());
+  }
+
+  private async fetchAllLast24h(clientId?: number, pageSize = 200): Promise<void> {
+    const accumulated: EnergyMeasurement[] = [];
+    let page = 0;
+    while (true) {
+      const params = new URLSearchParams({ page: String(page), size: String(pageSize) });
+      if (clientId) params.append('idCliente', String(clientId));
+
+      const url = `${this.API_MEASUREMENTS_LAST24H_PATH}?${params.toString()}`;
+      const resp = await firstValueFrom(this.http.get<EnergyMeasurementResponse>(url));
+      accumulated.push(...this.extractMeasurements(resp));
+
+      page++;
+      if (typeof resp.totalPages === 'number' && page >= resp.totalPages) break;
+      if (typeof (resp as any).last === 'boolean' && (resp as any).last) break;
+      if (typeof resp.totalPages !== 'number' && typeof (resp as any).last !== 'boolean') break;
+    }
+
+    this.rawMeasurementsSignal.set(accumulated);
+    this.currentPageSignal.set(0);
+    this.errorSignal.set('El endpoint de rango de fechas falló en records-api; se muestran solo las últimas 24h.');
+    this.loadingSignal.set(false);
+  }
+
+  private extractMeasurements(response: EnergyMeasurementResponse): EnergyMeasurement[] {
+    return response.content ?? response.data ?? [];
+  }
+
+  private shouldFallbackToLast24h(err: any, startDate?: string | Date, endDate?: string | Date): boolean {
+    if (!startDate && !endDate) return false;
+    const msg = String(err?.error?.message || err?.message || '').toLowerCase();
+    return err?.status === 400 && msg.includes('parameter name information not available via reflection');
   }
 
   private transformToDataPoint(m: EnergyMeasurement): ConsumptionDataPoint {

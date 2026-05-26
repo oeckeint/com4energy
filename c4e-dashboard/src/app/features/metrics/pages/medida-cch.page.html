@@ -1,0 +1,74 @@
+<div class="p-6">
+  <h1 class="text-2xl font-bold mb-4">Medida CCH</h1>
+
+  <div class="measure-split-layout mb-4">
+    <div class="measure-split-left">
+      <app-measure-filters
+        [day]="filters.day"
+        (dayChange)="onDayChange($event)"
+        [clientIdsText]="filters.clientIdsText"
+        (clientIdsTextChange)="filters.clientIdsText = $event"
+        [loading]="service.loading()"
+        [helperText]="'Separar IDs por coma.'"
+        (searchRequested)="applyFilters()"
+        (clearRequested)="clearFilters()"
+      />
+    </div>
+
+    <div class="measure-split-middle">
+      <div class="measure-split-chart-wrap">
+        <app-measure-completeness-gauge
+          [clientIds]="service.clientIds()"
+          [columnValidation]="service.columnValidation()"
+          (openAuditorRequested)="openAuditorDefectuosos()"
+        />
+        <app-measure-hourly-mini-chart
+          [rows]="service.rows()"
+          [chartYMax]="2500"
+          [columnValidation]="service.columnValidation()"
+          [clientIds]="service.clientIds()"
+          [currentDate]="filters.day"
+          (dayChange)="onDayChange($event)"
+        />
+      </div>
+    </div>
+
+    <div class="measure-split-right">
+      <app-measure-auditor-panel
+        [clientIds]="service.clientIds()"
+        [columnValidation]="service.columnValidation()"
+        [currentDate]="filters.day"
+        [focusDefectuososTrigger]="auditorFocusTrigger"
+        (clienteSelected)="onClienteSelected($event)"
+      />
+      <div class="mt-4">
+        <app-cliente-info-card [clienteId]="selectedClienteId" />
+      </div>
+    </div>
+  </div>
+
+  @if (service.error()) {
+    <div class="alert alert-danger">{{ service.error() }}</div>
+  }
+
+  @if (service.loading()) {
+    <output class="d-flex align-items-center mb-3" aria-live="polite" aria-busy="true">
+      <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+      <span class="visually-hidden">Cargando datos</span>
+    </output>
+  }
+
+  <app-measure-matrix-table
+    [rows]="service.rows()"
+    [clientIds]="service.clientIds()"
+    [columnValidation]="service.columnValidation()"
+    [loading]="service.loading()"
+    [expectedFallback]="24"
+    [clientColumnMinWidth]="180"
+    [exportMeasureType]="'Medida CCH'"
+    [exportDate]="filters.day"
+    [exportClientFilterText]="filters.clientIdsText"
+    (clientSelected)="onClienteSelected($event)"
+    (refreshRequested)="applyFilters()"
+  />
+</div>
