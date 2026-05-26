@@ -22,8 +22,9 @@ export class FileUploadService {
 
   /**
    * Allowed file extensions
+   * TEMPORARY: Only .0 revisions are accepted while deduplication strategy is being refined.
    */
-  readonly ALLOWED_EXTENSIONS = ['xml', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  readonly ALLOWED_EXTENSIONS = ['0'];
   readonly MAX_FILE_SIZE_MB = 50;
   readonly MAX_TOTAL_SIZE_MB = 500;
 
@@ -86,7 +87,12 @@ export class FileUploadService {
         return `El archivo ${file.name} excede el tamaño máximo de ${this.MAX_FILE_SIZE_MB}MB`;
       }
 
-      // Check file extension
+      // TEMPORARY: Only .0 revisions are accepted for now
+      if (!file.name.endsWith('.0')) {
+        return `El archivo ${file.name} debe tener la extensión .0. Solo se aceptan archivos con revisión inicial (.0) de forma temporal.`;
+      }
+
+      // Check file extension (validate against allowed extensions)
       const extension = file.name.split('.').pop()?.toLowerCase();
       if (!extension || !this.ALLOWED_EXTENSIONS.includes(extension)) {
         const allowedExtensions = this.ALLOWED_EXTENSIONS.map(ext => `.${ext}`).join(', ');
