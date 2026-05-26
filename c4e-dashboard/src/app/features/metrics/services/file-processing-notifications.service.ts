@@ -70,6 +70,7 @@ export class FileProcessingNotificationsService {
         fileType: null,
         origin: 'API',
         failureReason: null,
+        failureReasonDescription: null,
         comment: 'Procesamiento iniciado. Te avisaremos cuando termine.',
         occurredAt: new Date().toISOString(),
         receivedAt: new Date().toISOString()

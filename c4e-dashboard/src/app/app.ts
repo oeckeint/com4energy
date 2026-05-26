@@ -151,9 +151,11 @@ export class App implements OnDestroy {
   toastItems() {
     return this.notificationsService.notifications().filter(item => {
       const status = (item.status || '').toUpperCase();
-      const isStarted = item.eventType === 'FILE_PROCESSING_STARTED' || status === 'PROCESSING';
-      const isMeasureFinished = item.eventType === 'FILE_MEASURE_PROCESSED' && this.isTerminalStatus(status);
-      return isStarted || isMeasureFinished;
+      const isRegistered = item.eventType === 'FILE_REGISTERED';
+      const isMeasureFinished =
+        (item.eventType === 'FILE_PROCESSING_PROCESSED' || item.eventType === 'FILE_MEASURE_PROCESSED') &&
+        this.isTerminalStatus(status);
+      return isRegistered || isMeasureFinished;
     });
   }
 

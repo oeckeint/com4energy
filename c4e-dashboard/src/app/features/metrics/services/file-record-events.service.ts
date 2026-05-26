@@ -20,7 +20,7 @@ export class FileRecordEventsService {
     page = 0,
     size = 20,
     filters: FileRecordEventFilters = {},
-    sortBy = 'receivedAt',
+    sortBy = 'id',
     sortDir: 'asc' | 'desc' = 'desc'
   ): Promise<void> {
     this.loadingSignal.set(true);

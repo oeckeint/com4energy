@@ -427,6 +427,32 @@
   border-left-color: #ffa000;
 }
 
+.realtime-toast--registered {
+  border-color: #d1fae5;
+  border-left-color: #059669;
+}
+
+.realtime-toast__badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.realtime-toast__badge--registered {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.realtime-toast__description {
+  margin-top: 3px;
+  color: #374151;
+  font-size: 11px;
+}
+
 .realtime-toast__title {
   font-weight: 700;
   font-size: 12px;

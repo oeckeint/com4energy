@@ -125,14 +125,27 @@
   }
 
   @for (item of toastItems(); track item.id) {
-    <article class="realtime-toast" [class.realtime-toast--error]="item.failureReason">
-      <div class="realtime-toast__title">{{ item.eventType }} · {{ item.status }}</div>
+    <article
+      class="realtime-toast"
+      [class.realtime-toast--registered]="item.eventType === 'FILE_REGISTERED'"
+      [class.realtime-toast--error]="item.failureReason"
+    >
+      <div class="realtime-toast__title">
+        @if (item.eventType === 'FILE_REGISTERED') {
+          <span class="realtime-toast__badge realtime-toast__badge--registered">Nuevo archivo</span>
+        } @else {
+          {{ item.eventType }} · {{ item.status }}
+        }
+      </div>
       <div class="realtime-toast__file">{{ item.filename }}</div>
       <div class="realtime-toast__meta">
         <span>{{ item.fileType || '-' }}</span>
         <span>·</span>
         <span>{{ item.origin || '-' }}</span>
       </div>
+      @if (item.eventType === 'FILE_REGISTERED' && item.failureReasonDescription) {
+        <div class="realtime-toast__description">{{ item.failureReasonDescription }}</div>
+      }
       @if (item.failureReason) {
         <div class="realtime-toast__reason">{{ item.failureReason }}</div>
       }
