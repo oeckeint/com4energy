@@ -42,6 +42,9 @@ c4e:
         FILE_ALREADY_EXISTS:
           exchange: c4e.exchange
           routing-key: c4e.file.already-exists
+        FILE_REGISTERED:
+          exchange: c4e.exchange
+          routing-key: c4e.file.registered
         FILE_PROCESSING_STARTED:
           exchange: c4e.exchange
           routing-key: c4e.file.processing-started
@@ -51,6 +54,9 @@ c4e:
         FILE_PERSISTENCE_QUARANTINE:
           exchange: c4e.exchange
           routing-key: c4e.file.persistence-quarantine
+        FILE_PROCESSING_PROCESSED:
+          exchange: c4e.exchange
+          routing-key: c4e.file.processing-processed
         FILE_MEASURE_PROCESSED:
           exchange: c4e.exchange
           routing-key: c4e.file.measure-processed
