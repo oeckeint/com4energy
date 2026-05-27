@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FileUploadService } from '../services/file-upload.service';
+import { formatDashboardDateTime } from '../../../core/date-time-format';
 
 @Component({
   selector: 'app-file-upload',
@@ -137,7 +138,7 @@ import { FileUploadService } from '../services/file-upload.service';
                   <span class="badge text-bg-secondary">Rechazados: {{ service.uploadResult()!.rejectedCount }}</span>
                   <span class="badge text-bg-danger">Errores: {{ service.uploadResult()!.errorCount }}</span>
                 </div>
-                <small class="text-muted">{{ service.uploadResult()!.timestamp }}</small>
+                <small class="text-muted">{{ formatTimestamp(service.uploadResult()!.timestamp) }}</small>
               </div>
               <button
                 type="button"
@@ -285,5 +286,16 @@ export class FileUploadComponent implements OnInit, OnDestroy {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  formatTimestamp(value: string): string {
+    return formatDashboardDateTime(value, {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
   }
 }
