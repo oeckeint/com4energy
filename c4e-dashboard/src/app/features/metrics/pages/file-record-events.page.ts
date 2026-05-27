@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { formatDashboardDateTime } from '../../../core/date-time-format';
 import {
   FILE_RECORD_EVENT_STATUS_OPTIONS,
   FILE_RECORD_EVENT_TYPE_OPTIONS,
@@ -166,7 +167,14 @@ export class FileRecordEventsPage implements OnInit {
   }
 
   formatDate(value: string): string {
-    return new Date(value).toLocaleString('es-MX');
+    return formatDashboardDateTime(value, {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
   }
 
   formatMetadata(json: string | null): string | null {

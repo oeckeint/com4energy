@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { EnergyListComponent } from '../components/energy-list.component';
 import { EnergyChartComponent } from '../components/energy-chart.component';
 import { EnergyMeasurementService } from '../services/energy-measurement.service';
+import { formatDashboardDateTime } from '../../../core/date-time-format';
 
 @Component({
   selector: 'app-metrics-page',
@@ -15,7 +16,7 @@ import { EnergyMeasurementService } from '../services/energy-measurement.service
         <button (click)="prevWindow()" style="padding:6px 10px;border-radius:4px;border:1px solid #444;background:#fff;color:#444">Anterior 24h</button>
         <button (click)="nextWindow()" style="padding:6px 10px;border-radius:4px;border:1px solid #444;background:#fff;color:#444">Siguiente 24h</button>
         <span style="font-size:14px;color:#555">
-          {{ windowStart.toLocaleString('es-MX') }} — {{ windowEnd.toLocaleString('es-MX') }}
+          {{ formatWindowDate(windowStart) }} — {{ formatWindowDate(windowEnd) }}
         </span>
       </div>
       <app-energy-chart />
@@ -85,5 +86,9 @@ export class MetricsPage implements OnInit {
       this.windowStart = start;
       this.windowEnd = now;
       this.loadWindow();
+    }
+
+    formatWindowDate(value: Date): string {
+      return formatDashboardDateTime(value);
     }
   }

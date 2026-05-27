@@ -4,6 +4,7 @@ import { EnergyMeasurementService } from './features/metrics/services/energy-mea
 import { FileProcessingNotificationsService } from './features/metrics/services/file-processing-notifications.service';
 import { FileRecordEventsService } from './features/metrics/services/file-record-events.service';
 import { FileRecordEventItem } from './features/metrics/models/file-record-event.types';
+import { formatDashboardDateTime } from './core/date-time-format';
 
 @Component({
   selector: 'app-root',
@@ -132,14 +133,13 @@ export class App implements OnDestroy {
   }
 
   formatEventDate(value: string | null): string {
-    if (!value) return 'Ahora';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return 'Ahora';
-    return date.toLocaleString('es-MX', {
+    return formatDashboardDateTime(value, {
       day: '2-digit',
       month: '2-digit',
+      year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      second: '2-digit'
     });
   }
 

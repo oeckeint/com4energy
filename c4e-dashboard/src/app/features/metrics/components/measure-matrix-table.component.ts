@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { formatDashboardDateTime } from '../../../core/date-time-format';
 
 // Formatea números con formato europeo: miles (.) y redondea hacia arriba (Math.ceil)
 const formatEnergyValue = (value: number | null | undefined): string => {
@@ -862,7 +863,7 @@ export class MeasureMatrixTableComponent implements OnChanges {
   }
 
   private buildCsvMetadataRows(): string[][] {
-    const generatedAt = new Date().toLocaleString('es-ES');
+    const generatedAt = formatDashboardDateTime(new Date());
     const fallbackRows = this.rows.length > 0 ? this.rows.length : this.expectedFallback;
     const clientScope = this.exportClientFilterText.trim() ? this.exportClientFilterText.trim() : 'Todos';
 

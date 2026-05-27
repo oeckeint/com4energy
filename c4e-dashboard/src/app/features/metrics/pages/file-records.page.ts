@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { formatDashboardDateTime } from '../../../core/date-time-format';
 import { FileRecordsService } from '../services/file-records.service';
 import { FILE_RECORD_ORIGIN_OPTIONS, FILE_RECORD_STATUS_OPTIONS, FILE_RECORD_TYPE_OPTIONS } from '../models/file-record-filter-options';
 import { FileRecordFilters } from '../models/file-record.types';
@@ -163,7 +164,7 @@ export class FileRecordsPage implements OnInit {
   }
 
   formatDate(value: string): string {
-    return new Date(value).toLocaleString('es-MX');
+    return formatDashboardDateTime(value);
   }
 
   private loadPage(page: number): void {
