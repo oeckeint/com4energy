@@ -38,7 +38,7 @@ class ClientExistsRecordValidatorTest {
         ClientExistsRecordValidator validator = new ClientExistsRecordValidator(clienteRepository);
 
         when(clienteRepository.findLookupByCups(eq("ES123456789012345678"), any(Pageable.class)))
-                .thenReturn(List.of(client(1L, null), client(2L, null)));
+                .thenReturn(List.of(client(1, null), client(2, null)));
 
         var result = validator.validate(hourly("ES123456789012345678"));
 
@@ -66,7 +66,7 @@ class ClientExistsRecordValidatorTest {
         ClientExistsRecordValidator validator = new ClientExistsRecordValidator(clienteRepository);
 
         when(clienteRepository.findLookupByCups(eq("ES123456789012345678"), any(Pageable.class)))
-                .thenReturn(List.of(client(1L, null)));
+                .thenReturn(List.of(client(1, null)));
 
         var result = validator.validate(hourly("ES123456789012345678"));
 
@@ -80,7 +80,7 @@ class ClientExistsRecordValidatorTest {
         ClientExistsRecordValidator validator = new ClientExistsRecordValidator(clienteRepository);
 
         when(clienteRepository.findLookupByCups(eq("ES123456789012345678"), any(Pageable.class)))
-                .thenReturn(List.of(client(1L, null)));
+                .thenReturn(List.of(client(1, null)));
 
         MeasureRecord.Hourly first = hourly("ES123456789012345678");
         MeasureRecord.Hourly second = hourly("ES123456789012345678");
@@ -125,10 +125,10 @@ class ClientExistsRecordValidatorTest {
         );
     }
 
-    private ClienteRepository.ClienteLookupView client(Long id, String tarifa) {
+    private ClienteRepository.ClienteLookupView client(Integer id, String tarifa) {
         return new ClienteRepository.ClienteLookupView() {
             @Override
-            public Long getId() {
+            public Integer getId() {
                 return id;
             }
 

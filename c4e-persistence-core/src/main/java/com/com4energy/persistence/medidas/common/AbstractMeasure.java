@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 public abstract class AbstractMeasure extends RevisionControlled {
 
     @Column(name = "id_cliente", nullable = false)
-    protected Long clienteId;
+    protected Integer clienteId;
 
     @Column(name = "tipo_medida", nullable = false)
     protected Integer tipoMedida;

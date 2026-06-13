@@ -22,5 +22,5 @@ public interface ClienteRepository extends BaseClienteRepository {
             FROM Cliente c
             WHERE c.id = :idCliente
             """)
-    Optional<ClienteInfoDTO> findClienteInfoById(@Param("idCliente") Long idCliente);
+    Optional<ClienteInfoDTO> findClienteInfoById(@Param("idCliente") Integer idCliente);
 }

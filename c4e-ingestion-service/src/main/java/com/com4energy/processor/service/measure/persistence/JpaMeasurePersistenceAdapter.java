@@ -284,7 +284,7 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
 
     private MedidaH toMedidaH(
             MeasureRecord.Hourly measure,
-            Long clientId,
+            Integer clientId,
             MeasurePersistenceContracts.PersistMeasuresCommand command
     ) {
         return MedidaH.builder()
@@ -317,7 +317,7 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
 
     private MedidaQH toMedidaQH(
             MeasureRecord.QuarterHourly measure,
-            Long clientId,
+            Integer clientId,
             MeasurePersistenceContracts.PersistMeasuresCommand command
     ) {
         return MedidaQH.builder()
@@ -369,7 +369,7 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
         }
     }
 
-    private MedidaCCH toMedidaCch(MeasureRecord.Cch measure, Long clientId) {
+    private MedidaCCH toMedidaCch(MeasureRecord.Cch measure, Integer clientId) {
         return MedidaCCH.builder()
                 .clienteId(clientId)
                 .fecha(measure.timestamp())
@@ -379,9 +379,9 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
                 .build();
     }
 
-    private record ClienteResolution(Long clientId, String tarifa, String errorMessage) {
+    private record ClienteResolution(Integer clientId, String tarifa, String errorMessage) {
 
-        static ClienteResolution success(Long clientId, String tarifa) {
+        static ClienteResolution success(Integer clientId, String tarifa) {
             return new ClienteResolution(clientId, tarifa, null);
         }
 

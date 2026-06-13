@@ -18,7 +18,7 @@ public class Cliente {
 
     @Id
     @Column(name = "id_cliente")
-    private Long id;
+    private Integer id;
 
     @Column(name = "cups")
     private String cups;
@@ -30,6 +30,6 @@ public class Cliente {
     private String tarifa;
 
     @Column(name = "is_deleted")
-    private Short isDeleted;
+    private Integer isDeleted;
 
 }

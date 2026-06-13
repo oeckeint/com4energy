@@ -20,7 +20,7 @@ public interface ClienteRepository extends BaseClienteRepository {
     List<ClienteLookupView> findLookupByCups(@Param("cups") String cups, Pageable pageable);
 
     interface ClienteLookupView {
-        Long getId();
+        Integer getId();
         String getTarifa();
     }
 

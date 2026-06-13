@@ -25,7 +25,7 @@ public class ClienteController {
      * @return Información del cliente (idCliente, cups, nombreCliente, tarifa, isDeleted)
      */
     @GetMapping("/{idCliente}")
-    public ResponseEntity<ClienteInfoDTO> getClienteInfo(@PathVariable("idCliente") Long idCliente) {
+    public ResponseEntity<ClienteInfoDTO> getClienteInfo(@PathVariable("idCliente") Integer idCliente) {
         ClienteInfoDTO dto = clienteService.findClienteInfoById(idCliente)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("Cliente con ID %d no encontrado", idCliente)

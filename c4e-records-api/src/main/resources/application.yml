@@ -17,7 +17,11 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
-      ddl-auto: validate
+      # El esquema lo posee db-migrations (Liquibase). No validamos aquí porque
+      # las columnas de medida son INT UNSIGNED (rango > int con signo) y se mapean
+      # como Long a propósito: Hibernate `validate` no entiende UNSIGNED y rompe,
+      # aunque en runtime leer/escribir funciona. Revisar si algún día cambia el esquema.
+      ddl-auto: none
   liquibase:
     enabled: false
     change-log: classpath:db/changelog/db.changelog-master.xml

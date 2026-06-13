@@ -13,7 +13,7 @@ public class ClienteService {
 
     private final ClienteRepository clienteRepository;
 
-    public Optional<ClienteInfoDTO> findClienteInfoById(Long id) {
+    public Optional<ClienteInfoDTO> findClienteInfoById(Integer id) {
         return clienteRepository.findClienteInfoById(id);
     }
 }

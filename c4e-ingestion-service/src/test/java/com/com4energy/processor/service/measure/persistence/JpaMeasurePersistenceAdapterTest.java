@@ -74,7 +74,7 @@ class JpaMeasurePersistenceAdapterTest {
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
 
         when(clienteRepository.findLookupByCups(eq("ES0002"), any(Pageable.class)))
-                .thenReturn(List.of(client(10L, "2.0A"), client(11L, "2.0A")));
+                .thenReturn(List.of(client(10, "2.0A"), client(11, "2.0A")));
 
         JpaMeasurePersistenceAdapter adapter = new JpaMeasurePersistenceAdapter(
                 medidaHRepository,
@@ -109,7 +109,7 @@ class JpaMeasurePersistenceAdapterTest {
         MedidaCCHRepository medidaCCHRepository = mock(MedidaCCHRepository.class);
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
 
-        when(clienteRepository.findLookupByCups(eq("ES0003"), any(Pageable.class))).thenReturn(List.of(client(12L, "20TD")));
+        when(clienteRepository.findLookupByCups(eq("ES0003"), any(Pageable.class))).thenReturn(List.of(client(12, "20TD")));
 
         JpaMeasurePersistenceAdapter adapter = new JpaMeasurePersistenceAdapter(
                 medidaHRepository,
@@ -143,10 +143,10 @@ class JpaMeasurePersistenceAdapterTest {
         MedidaCCHRepository medidaCCHRepository = mock(MedidaCCHRepository.class);
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
 
-        when(clienteRepository.findLookupByCups(eq("ES0101"), any(Pageable.class))).thenReturn(List.of(client(21L, "2.0A")));
-        when(clienteRepository.findLookupByCups(eq("ES0102"), any(Pageable.class))).thenReturn(List.of(client(22L, "2.0A")));
-        when(clienteRepository.findLookupByCups(eq("ES0103"), any(Pageable.class))).thenReturn(List.of(client(23L, "3.0A")));
-        when(clienteRepository.findLookupByCups(eq("ES0104"), any(Pageable.class))).thenReturn(List.of(client(24L, "2.0A")));
+        when(clienteRepository.findLookupByCups(eq("ES0101"), any(Pageable.class))).thenReturn(List.of(client(21, "2.0A")));
+        when(clienteRepository.findLookupByCups(eq("ES0102"), any(Pageable.class))).thenReturn(List.of(client(22, "2.0A")));
+        when(clienteRepository.findLookupByCups(eq("ES0103"), any(Pageable.class))).thenReturn(List.of(client(23, "3.0A")));
+        when(clienteRepository.findLookupByCups(eq("ES0104"), any(Pageable.class))).thenReturn(List.of(client(24, "2.0A")));
 
         JpaMeasurePersistenceAdapter adapter = new JpaMeasurePersistenceAdapter(
                 medidaHRepository,
@@ -191,24 +191,24 @@ class JpaMeasurePersistenceAdapterTest {
         assertEquals(2, cchEntities.size());
 
         MedidaH hEntity = hEntities.get(0);
-        assertEquals(21L, hEntity.getClienteId());
+        assertEquals(21, hEntity.getClienteId().intValue());
         assertEquals(hourly.tipoMedida(), hEntity.getTipoMedida());
         assertEquals(hourly.timestamp(), hEntity.getFecha());
 
         MedidaQH qhEntity = qhEntities.get(0);
-        assertEquals(22L, qhEntity.getClienteId());
+        assertEquals(22, qhEntity.getClienteId().intValue());
         assertEquals(quarterHourly.tipoMedida(), qhEntity.getTipoMedida());
         assertEquals(quarterHourly.timestamp(), qhEntity.getFecha());
         assertEquals(quarterHourly.actent(), qhEntity.getActent());
 
         assertTrue(cchEntities.stream().anyMatch(entity ->
-                entity.getClienteId().equals(23L)
+                entity.getClienteId().equals(23)
                         && entity.getFecha().equals(f5AsCch.timestamp())
                         && entity.getActent().equals(f5AsCch.actent())
                         && entity.getMetod().equals(f5AsCch.metod())
         ));
         assertTrue(cchEntities.stream().anyMatch(entity ->
-                entity.getClienteId().equals(24L)
+                entity.getClienteId().equals(24)
                         && entity.getFecha().equals(cch.timestamp())
                         && entity.getActent().equals(cch.actent())
                         && entity.getMetod().equals(cch.metod())
@@ -222,10 +222,10 @@ class JpaMeasurePersistenceAdapterTest {
         return captor.getValue();
     }
 
-    private ClienteRepository.ClienteLookupView client(Long id, String tarifa) {
+    private ClienteRepository.ClienteLookupView client(Integer id, String tarifa) {
         return new ClienteRepository.ClienteLookupView() {
             @Override
-            public Long getId() {
+            public Integer getId() {
                 return id;
             }
 
@@ -323,7 +323,7 @@ class JpaMeasurePersistenceAdapterTest {
         MedidaCCHRepository medidaCCHRepository = mock(MedidaCCHRepository.class);
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
 
-        ClienteRepository.ClienteLookupView client = client(1L, "2.0A");
+        ClienteRepository.ClienteLookupView client = client(1, "2.0A");
         when(clienteRepository.findLookupByCups(eq("ES0001"), any(Pageable.class))).thenReturn(List.of(client));
 
         JpaMeasurePersistenceAdapter adapter = new JpaMeasurePersistenceAdapter(
@@ -374,7 +374,7 @@ class JpaMeasurePersistenceAdapterTest {
         MedidaCCHRepository medidaCCHRepository = mock(MedidaCCHRepository.class);
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
 
-        ClienteRepository.ClienteLookupView client = client(1L, "2.0A");
+        ClienteRepository.ClienteLookupView client = client(1, "2.0A");
         when(clienteRepository.findLookupByCups(eq("ES0001"), any(Pageable.class))).thenReturn(List.of(client));
 
         // Mock: first call (all 3) fails, then both halves succeed
@@ -412,7 +412,7 @@ class JpaMeasurePersistenceAdapterTest {
         MedidaCCHRepository medidaCCHRepository = mock(MedidaCCHRepository.class);
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
 
-        ClienteRepository.ClienteLookupView client = client(1L, "2.0A");
+        ClienteRepository.ClienteLookupView client = client(1, "2.0A");
         when(clienteRepository.findLookupByCups(eq("ES0001"), any(Pageable.class))).thenReturn(List.of(client));
 
         AtomicBoolean singleRecordFailed = new AtomicBoolean(false);
@@ -454,7 +454,7 @@ class JpaMeasurePersistenceAdapterTest {
         MedidaCCHRepository medidaCCHRepository = mock(MedidaCCHRepository.class);
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
 
-        when(clienteRepository.findLookupByCups(eq("ES0001"), any(Pageable.class))).thenReturn(List.of(client(1L, "2.0A")));
+        when(clienteRepository.findLookupByCups(eq("ES0001"), any(Pageable.class))).thenReturn(List.of(client(1, "2.0A")));
 
         JpaMeasurePersistenceAdapter adapter = new JpaMeasurePersistenceAdapter(
                 medidaHRepository,

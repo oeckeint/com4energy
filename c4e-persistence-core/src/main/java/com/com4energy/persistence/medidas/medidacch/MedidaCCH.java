@@ -39,7 +39,7 @@ public class MedidaCCH {
     private Long id;
 
     @Column(name = "id_cliente", nullable = false)
-    private Long clienteId;
+    private Integer clienteId;
 
     @Column(name = "fecha", nullable = false)
     private LocalDateTime fecha;
