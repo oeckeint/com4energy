@@ -1,27 +1,23 @@
 package com.com4energy.processor.repository;
 
-import java.util.List;
-import java.util.Optional;
-import java.time.LocalDateTime;
-import com.com4energy.processor.model.FileType;
+import com.com4energy.persistence.filerecord.BaseFileRecordRepository;
+import com.com4energy.persistence.filerecord.FileRecord;
+import com.com4energy.persistence.filerecord.enums.FileStatus;
+import com.com4energy.persistence.filerecord.enums.FileType;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import com.com4energy.processor.model.FileRecord;
-import com.com4energy.processor.model.FileStatus;
 
-/**
- * Repository interface for managing FileRecord entities.
- * Provides methods to find FileRecords by originalFilename and path, and by status.
- */
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 @Repository
-public interface
-FileRecordRepository extends JpaRepository<FileRecord, Long> {
+public interface FileRecordRepository extends BaseFileRecordRepository {
 
     boolean existsByOriginalFilenameAndFinalPath(String originalFilename, String finalPath);
 
@@ -34,13 +30,6 @@ FileRecordRepository extends JpaRepository<FileRecord, Long> {
     @Query("SELECT f.originalFilename FROM FileRecord f WHERE f.originalFilename LIKE :pattern")
     List<String> findAllOriginalFilenamesLike(@Param("pattern") String pattern);
 
-    /**
-     * Returns true if any file in the same "family" (same base name, any extension)
-     * is currently locked (being processed), excluding the file itself.
-     *
-     * Used to defer processing of a revision when a sibling revision is already in-flight,
-     * preventing concurrent writes to the same measure records without requiring UNIQUE constraints.
-     */
     @Query("""
             SELECT COUNT(f) > 0 FROM FileRecord f
             WHERE f.originalFilename LIKE :familyPattern

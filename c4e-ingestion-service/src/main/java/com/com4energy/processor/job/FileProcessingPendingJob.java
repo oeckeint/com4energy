@@ -3,7 +3,7 @@ package com.com4energy.processor.job;
 import com.com4energy.processor.common.LogsCommonMessageKey;
 import com.com4energy.processor.common.SchedulerBeanNames;
 import com.com4energy.processor.config.FeatureFlagService;
-import com.com4energy.processor.model.FileStatus;
+import com.com4energy.persistence.filerecord.enums.FileStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;

@@ -1,10 +1,10 @@
 package com.com4energy.processor.service.processing;
 
-import com.com4energy.processor.model.FailureReason;
-import com.com4energy.processor.model.FileRecord;
-import com.com4energy.processor.model.BusinessResult;
-import com.com4energy.processor.model.FileType;
-import com.com4energy.processor.model.QualityStatus;
+import com.com4energy.persistence.filerecord.enums.FailureReason;
+import com.com4energy.persistence.filerecord.FileRecord;
+import com.com4energy.persistence.filerecord.enums.BusinessResult;
+import com.com4energy.persistence.filerecord.enums.FileType;
+import com.com4energy.persistence.filerecord.enums.QualityStatus;
 import com.com4energy.processor.outbox.domain.OutboxEventType;
 import com.com4energy.processor.service.measure.MeasureFileParserService;
 import com.com4energy.processor.service.measure.MeasureFilenameMetadata;

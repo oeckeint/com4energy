@@ -15,7 +15,7 @@ import java.util.List;
 import com.com4energy.i18n.core.Messages;
 import com.com4energy.processor.common.LogsCommonMessageKey;
 import com.com4energy.processor.exception.FileScannerException;
-import com.com4energy.processor.model.FileOrigin;
+import com.com4energy.persistence.filerecord.enums.FileOrigin;
 import com.com4energy.processor.service.dto.FileBatchResult;
 import com.com4energy.processor.service.dto.PathMultipartFile;
 import com.com4energy.processor.util.FileStorageUtil;

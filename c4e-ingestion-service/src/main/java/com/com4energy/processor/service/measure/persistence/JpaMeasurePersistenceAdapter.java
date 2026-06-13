@@ -1,20 +1,21 @@
 package com.com4energy.processor.service.measure.persistence;
 
-import com.com4energy.processor.model.measure.MedidaCCHEntity;
-import com.com4energy.processor.model.measure.MedidaHEntity;
-import com.com4energy.processor.model.measure.MedidaQHEntity;
+import com.com4energy.persistence.medidas.medidacch.MedidaCCH;
+import com.com4energy.processor.repository.MedidaCCHRepository;
+import com.com4energy.persistence.medidas.medidah.MedidaH;
+import com.com4energy.processor.repository.MedidaHRepository;
+import com.com4energy.persistence.medidas.medidaqh.MedidaQH;
+import com.com4energy.processor.repository.MedidaQHRepository;
 import com.com4energy.processor.repository.ClienteRepository;
-import com.com4energy.processor.repository.measure.MedidaCCHRepository;
-import com.com4energy.processor.repository.measure.MedidaHRepository;
-import com.com4energy.processor.repository.measure.MedidaQHRepository;
 import com.com4energy.processor.service.measure.MeasureRecord;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.FlushModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -26,13 +27,14 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts.MeasurePersistencePort {
 
-    private static final String SYSTEM_USER = "SYSTEM";
     private static final int DEFAULT_BATCH_SIZE = 1000;
+    private static final int DEFAULT_PAYLOAD_HASH_VERSION = 1;
 
     private final MedidaHRepository medidaHRepository;
     private final MedidaQHRepository medidaQHRepository;
     private final MedidaCCHRepository medidaCCHRepository;
     private final ClienteRepository clienteRepository;
+    private final EntityManager entityManager;
 
     // Contexto para tracking durante binary split
     private final ThreadLocal<BatchSplitContext> batchContext = ThreadLocal.withInitial(BatchSplitContext::new);
@@ -45,12 +47,17 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
         BatchSplitContext context = batchContext.get();
         context.reset();
 
+        // Evita el autoflush O(n^2): por defecto Hibernate flushea el persistence context
+        // ANTES de cada SELECT (p.ej. resolveClient -> findLookupByCups), re-verificando todas
+        // las entidades acumuladas. Con COMMIT, el flush ocurre una sola vez al final.
+        entityManager.setFlushMode(FlushModeType.COMMIT);
+
         List<String> errors = new ArrayList<>();
         Map<String, ClienteResolution> clientCache = new HashMap<>();
 
-        List<MedidaHEntity> p1Batch = new ArrayList<>();
-        List<MedidaQHEntity> p2Batch = new ArrayList<>();
-        List<MedidaCCHEntity> cchBatch = new ArrayList<>();
+        List<MedidaH> p1Batch = new ArrayList<>();
+        List<MedidaQH> p2Batch = new ArrayList<>();
+        List<MedidaCCH> cchBatch = new ArrayList<>();
 
         int skipped = 0;
         int persisted = 0;
@@ -64,15 +71,15 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
                     errors.add(resolution.errorMessage());
                 } else {
                     if (measureRecord instanceof MeasureRecord.Hourly hourly) {
-                        MedidaHEntity entity = toMedidaH(hourly, resolution.clientId());
+                        MedidaH entity = toMedidaH(hourly, resolution.clientId(), command);
                         context.registerSource(entity, measureRecord);
                         p1Batch.add(entity);
                     } else if (measureRecord instanceof MeasureRecord.QuarterHourly quarterHourly) {
-                        MedidaQHEntity entity = toMedidaQH(quarterHourly, resolution.clientId());
+                        MedidaQH entity = toMedidaQH(quarterHourly, resolution.clientId(), command);
                         context.registerSource(entity, measureRecord);
                         p2Batch.add(entity);
                     } else if (measureRecord instanceof MeasureRecord.Cch cch) {
-                        MedidaCCHEntity entity = toMedidaCch(cch, resolution.clientId());
+                        MedidaCCH entity = toMedidaCch(cch, resolution.clientId());
                         context.registerSource(entity, measureRecord);
                         cchBatch.add(entity);
                     }
@@ -109,9 +116,9 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
      * @return número de registros persistidos
      */
     private int flushBatches(
-            List<MedidaHEntity> p1Batch,
-            List<MedidaQHEntity> p2Batch,
-            List<MedidaCCHEntity> cchBatch
+            List<MedidaH> p1Batch,
+            List<MedidaQH> p2Batch,
+            List<MedidaCCH> cchBatch
     ) {
         int persistedCount = 0;
 
@@ -275,78 +282,100 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
         });
     }
 
-    private MedidaHEntity toMedidaH(MeasureRecord.Hourly measure, Long clientId) {
-        LocalDateTime now = LocalDateTime.now();
-        return MedidaHEntity.builder()
+    private MedidaH toMedidaH(
+            MeasureRecord.Hourly measure,
+            Long clientId,
+            MeasurePersistenceContracts.PersistMeasuresCommand command
+    ) {
+        return MedidaH.builder()
                 .clienteId(clientId)
                 .tipoMedida(measure.tipoMedida())
                 .fecha(measure.timestamp())
-                .banderaInvVer((double) measure.banderaInvVer())
-                .actent((double) measure.actent())
-                .qactent((double) measure.qactent())
-                .actsal((double) measure.actsal())
-                .qactsal((double) measure.qactsal())
-                .rq1((double) measure.rQ1())
-                .qrq1((double) measure.qrQ1())
-                .rq2((double) measure.rQ2())
-                .qrq2((double) measure.qrQ2())
-                .rq3((double) measure.rQ3())
-                .qrq3((double) measure.qrQ3())
-                .rq4((double) measure.rQ4())
-                .qrq4((double) measure.qrQ4())
-                .medres1((double) measure.medres1())
-                .qmedres1((double) measure.qmedres1())
-                .medres2((double) measure.medres2())
-                .qmedres2((double) measure.qmedres2())
+                .banderaInvVer((int) measure.banderaInvVer())
+                .actent((long) measure.actent())
+                .qactent((long) measure.qactent())
+                .actsal((long) measure.actsal())
+                .qactsal((long) measure.qactsal())
+                .rq1((long) measure.rQ1())
+                .qrq1((long) measure.qrQ1())
+                .rq2((long) measure.rQ2())
+                .qrq2((long) measure.qrQ2())
+                .rq3((long) measure.rQ3())
+                .qrq3((long) measure.qrQ3())
+                .rq4((long) measure.rQ4())
+                .qrq4((long) measure.qrQ4())
+                .medres1((long) measure.medres1())
+                .qmedres1((long) measure.qmedres1())
+                .medres2((long) measure.medres2())
+                .qmedres2((long) measure.qmedres2())
                 .metodObt(measure.metodObt())
-                .temporal(measure.temporal())
-                .origen(measure.origen())
-                .createdOn(now)
-                .createdBy(SYSTEM_USER)
+                .fileRecordId(command.fileRecordId())
+                .payloadHash(sha256Hex(measure.rawLine()))
+                .payloadHashVersion(DEFAULT_PAYLOAD_HASH_VERSION)
                 .build();
     }
 
-    private MedidaQHEntity toMedidaQH(MeasureRecord.QuarterHourly measure, Long clientId) {
-        LocalDateTime now = LocalDateTime.now();
-        return MedidaQHEntity.builder()
+    private MedidaQH toMedidaQH(
+            MeasureRecord.QuarterHourly measure,
+            Long clientId,
+            MeasurePersistenceContracts.PersistMeasuresCommand command
+    ) {
+        return MedidaQH.builder()
                 .clienteId(clientId)
-                .tipoMed(measure.tipoMedida())
+                .tipoMedida(measure.tipoMedida())
                 .fecha(measure.timestamp())
                 .banderaInvVer(measure.banderaInvVer())
-                .actent(measure.actent())
-                .qactent(measure.qactent())
-                .actsal(measure.actsal())
-                .qactsal(measure.qactsal())
-                .rq1(measure.rQ1())
-                .qrq1(measure.qrQ1())
-                .rq2(measure.rQ2())
-                .qrq2(measure.qrQ2())
-                .rq3(measure.rQ3())
-                .qrq3(measure.qrQ3())
-                .rq4(measure.rQ4())
-                .qrq4(measure.qrQ4())
-                .medres1(measure.medres1())
-                .qmedres1(measure.qmedres1())
-                .medres2(measure.medres2())
-                .qmedres2(measure.qmedres2())
+                .actent((long) measure.actent())
+                .qactent((long) measure.qactent())
+                .actsal((long) measure.actsal())
+                .qactsal((long) measure.qactsal())
+                .rq1((long) measure.rQ1())
+                .qrq1((long) measure.qrQ1())
+                .rq2((long) measure.rQ2())
+                .qrq2((long) measure.qrQ2())
+                .rq3((long) measure.rQ3())
+                .qrq3((long) measure.qrQ3())
+                .rq4((long) measure.rQ4())
+                .qrq4((long) measure.qrQ4())
+                .medres1((long) measure.medres1())
+                .qmedres1((long) measure.qmedres1())
+                .medres2((long) measure.medres2())
+                .qmedres2((long) measure.qmedres2())
                 .metodObt(measure.metodObt())
-                .temporal(measure.temporal())
-                .origen(measure.origen())
-                .createdOn(now)
-                .createdBy(SYSTEM_USER)
+                .fileRecordId(command.fileRecordId())
+                .payloadHash(sha256Hex(measure.rawLine()))
+                .payloadHashVersion(DEFAULT_PAYLOAD_HASH_VERSION)
                 .build();
     }
 
-    private MedidaCCHEntity toMedidaCch(MeasureRecord.Cch measure, Long clientId) {
-        LocalDateTime now = LocalDateTime.now();
-        return MedidaCCHEntity.builder()
+    /**
+     * Calcula el SHA-256 (64 caracteres hex) de la línea cruda del registro.
+     * Sirve como payload_hash provisional para cumplir el contrato de versionado.
+     */
+    private String sha256Hex(String rawLine) {
+        String input = rawLine != null ? rawLine : "";
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                hex.append(Character.forDigit((b >> 4) & 0xF, 16));
+                hex.append(Character.forDigit(b & 0xF, 16));
+            }
+            return hex.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            // SHA-256 siempre está disponible en la JVM; no debería ocurrir.
+            throw new IllegalStateException("SHA-256 no disponible", e);
+        }
+    }
+
+    private MedidaCCH toMedidaCch(MeasureRecord.Cch measure, Long clientId) {
+        return MedidaCCH.builder()
                 .clienteId(clientId)
                 .fecha(measure.timestamp())
                 .banderaInvVer(measure.banderaInvVer())
                 .actent(measure.actent())
                 .metod(measure.metod())
-                .createdOn(now)
-                .createdBy(SYSTEM_USER)
                 .build();
     }
 

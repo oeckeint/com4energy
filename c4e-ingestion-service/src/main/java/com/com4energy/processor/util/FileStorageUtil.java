@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Optional;
 
-import com.com4energy.processor.model.FileStatus;
+import com.com4energy.persistence.filerecord.enums.FileStatus;
 import com.com4energy.processor.service.dto.FileContext;
 import com.com4energy.processor.service.dto.FileHandlingResult;
 import com.com4energy.processor.service.validation.ValidationContext;

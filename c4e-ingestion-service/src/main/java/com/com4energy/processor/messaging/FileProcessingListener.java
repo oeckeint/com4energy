@@ -6,7 +6,7 @@ import java.util.Set;
 
 import com.com4energy.processor.config.AppFeatureProperties;
 import com.com4energy.processor.config.InstanceIdentifier;
-import com.com4energy.processor.model.FileStatus;
+import com.com4energy.persistence.filerecord.enums.FileStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;

@@ -1,7 +1,7 @@
 package com.com4energy.processor.service.processing;
 
-import com.com4energy.processor.model.FailureReason;
-import com.com4energy.processor.model.FileType;
+import com.com4energy.persistence.filerecord.enums.FailureReason;
+import com.com4energy.persistence.filerecord.enums.FileType;
 import com.com4energy.processor.outbox.domain.OutboxEventType;
 
 import java.nio.file.Path;

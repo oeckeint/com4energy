@@ -3,7 +3,7 @@ package com.com4energy.processor.service;
 import com.com4energy.processor.common.InternalServices;
 import com.com4energy.processor.config.properties.FileUploadProperties;
 import com.com4energy.processor.exception.DuplicateHashPersistenceException;
-import com.com4energy.processor.model.FileOrigin;
+import com.com4energy.persistence.filerecord.enums.FileOrigin;
 import com.com4energy.processor.outbox.service.OutboxService;
 import com.com4energy.processor.service.dto.FileBatchResult;
 import com.com4energy.processor.service.dto.FileContext;

@@ -1,6 +1,6 @@
 package com.com4energy.processor.service.validation;
 
-import com.com4energy.processor.model.FailureReason;
+import com.com4energy.persistence.filerecord.enums.FailureReason;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 

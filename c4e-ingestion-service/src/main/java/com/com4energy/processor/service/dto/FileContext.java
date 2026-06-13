@@ -3,8 +3,8 @@ package com.com4energy.processor.service.dto;
 import com.com4energy.i18n.core.Messages;
 import com.com4energy.processor.api.response.FileMetadata;
 import com.com4energy.processor.common.IngestionCommonMessageKey;
-import com.com4energy.processor.model.FailureReason;
-import com.com4energy.processor.model.FileStatus;
+import com.com4energy.persistence.filerecord.enums.FailureReason;
+import com.com4energy.persistence.filerecord.enums.FileStatus;
 import com.com4energy.processor.service.validation.ValidationContext;
 import lombok.NonNull;
 

@@ -1,6 +1,6 @@
 package com.com4energy.processor.service.processing;
 
-import com.com4energy.processor.model.FileType;
+import com.com4energy.persistence.filerecord.enums.FileType;
 import org.springframework.stereotype.Component;
 
 import java.util.EnumMap;

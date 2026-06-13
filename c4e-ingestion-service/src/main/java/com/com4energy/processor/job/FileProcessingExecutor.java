@@ -2,8 +2,8 @@ package com.com4energy.processor.job;
 
 import com.com4energy.i18n.core.Messages;
 import com.com4energy.processor.common.LogsCommonMessageKey;
-import com.com4energy.processor.model.FileRecord;
-import com.com4energy.processor.model.FileStatus;
+import com.com4energy.persistence.filerecord.FileRecord;
+import com.com4energy.persistence.filerecord.enums.FileStatus;
 import com.com4energy.processor.service.FileProcessingService;
 import com.com4energy.processor.service.FileRecordService;
 import lombok.RequiredArgsConstructor;

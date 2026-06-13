@@ -29,6 +29,7 @@
 	<properties>
 		<java.version>21</java.version>
 		<c4e.shared.libs.version>0.1.0-SNAPSHOT</c4e.shared.libs.version>
+		<c4e.domain.model.version>1.0.0-SNAPSHOT</c4e.domain.model.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -97,6 +98,11 @@
 			<groupId>com.com4energy</groupId>
 			<artifactId>c4e-event-publisher</artifactId>
 			<version>${c4e.shared.libs.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.com4energy</groupId>
+			<artifactId>c4e-persistence-core</artifactId>
+			<version>${c4e.domain.model.version}</version>
 		</dependency>
         <dependency>
             <groupId>org.jetbrains</groupId>

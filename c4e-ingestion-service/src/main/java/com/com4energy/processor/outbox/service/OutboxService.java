@@ -6,16 +6,17 @@ import java.util.List;
 import java.util.Optional;
 
 import com.com4energy.processor.common.InternalServices;
-import com.com4energy.processor.model.FailureReason;
-import com.com4energy.processor.model.FileOrigin;
-import com.com4energy.processor.model.FileRecord;
-import com.com4energy.processor.model.FileStatus;
+import com.com4energy.persistence.filerecord.enums.FailureReason;
+import com.com4energy.persistence.filerecord.enums.FileOrigin;
+import com.com4energy.persistence.filerecord.FileRecord;
+import com.com4energy.persistence.filerecord.enums.FileStatus;
 import com.com4energy.processor.outbox.domain.OutboxAggregateType;
 import com.com4energy.processor.outbox.domain.OutboxEvent;
 import com.com4energy.processor.outbox.domain.OutboxEventType;
 import com.com4energy.processor.outbox.domain.OutboxStatus;
 import com.com4energy.processor.outbox.factory.OutboxEventFactory;
 import com.com4energy.processor.outbox.repository.OutboxEventRepository;
+import com.com4energy.processor.service.IngestionFailureReasonMessages;
 import com.com4energy.processor.service.dto.FileContext;
 import com.com4energy.processor.service.dto.FileHandlingResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -50,7 +51,7 @@ public class OutboxService {
         payload.put("status", fileContext.fileStatus().name());
         payload.put("origin", origin.name());
         payload.put("reason", fileContext.getPrimaryFailureReason().name());
-        payload.put("reasonDescription", fileContext.getPrimaryFailureReason().getDescription());
+        payload.put("reasonDescription", IngestionFailureReasonMessages.getDescription(fileContext.getPrimaryFailureReason()));
         payload.put("createdBy", internalService);
         payload.put("occurredAt", LocalDateTime.now().toString());
 
@@ -95,7 +96,7 @@ public class OutboxService {
                 .uploadedAt(now)
                 .failedAt(now)
                 .retryCount(0)
-                .comment(safeReason.getDescription())
+                .comment(IngestionFailureReasonMessages.getDescription(safeReason))
                 .build();
 
         String payload = buildFileRejectedPayload(rejectedRecord, internalService);
@@ -123,7 +124,7 @@ public class OutboxService {
         payload.put("status", fileRecord.getStatus().name());
         payload.put("origin", fileRecord.getOrigin() != null ? fileRecord.getOrigin().name() : null);
         payload.put("reason", fileRecord.getFailureReason().name());
-        payload.put("reasonDescription", fileRecord.getFailureReason().getDescription());
+        payload.put("reasonDescription", IngestionFailureReasonMessages.getDescription(fileRecord.getFailureReason()));
         payload.put("comment", fileRecord.getComment());
         payload.put("createdBy", internalService);
         payload.put("occurredAt", LocalDateTime.now().toString());

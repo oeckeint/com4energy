@@ -2,7 +2,7 @@ package com.com4energy.processor.service.measure;
 
 import com.com4energy.i18n.core.Messages;
 import com.com4energy.processor.common.LogsCommonMessageKey;
-import com.com4energy.processor.model.FileType;
+import com.com4energy.persistence.filerecord.enums.FileType;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;

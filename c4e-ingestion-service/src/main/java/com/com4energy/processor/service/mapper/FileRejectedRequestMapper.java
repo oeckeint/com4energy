@@ -2,7 +2,8 @@ package com.com4energy.processor.service.mapper;
 
 import com.com4energy.i18n.core.Messages;
 import com.com4energy.processor.common.IngestionCommonMessageKey;
-import com.com4energy.processor.model.FailureReason;
+import com.com4energy.persistence.filerecord.enums.FailureReason;
+import com.com4energy.processor.service.IngestionFailureReasonMessages;
 import com.com4energy.processor.service.dto.FileContext;
 import com.com4energy.processor.service.dto.FileRejectedRequest;
 import org.springframework.stereotype.Component;
@@ -30,11 +31,11 @@ public class FileRejectedRequestMapper {
                     .collect(Collectors.joining(", "));
             return Messages.format(
                     IngestionCommonMessageKey.FILE_REJECTED_MULTIPLE_REASONS_COMMENT,
-                    fileContext.getPrimaryFailureReason().getDescription(),
+                    IngestionFailureReasonMessages.getDescription(fileContext.getPrimaryFailureReason()),
                     all
             );
         }
-        return fileContext.getPrimaryFailureReason().getDescription();
+        return IngestionFailureReasonMessages.getDescription(fileContext.getPrimaryFailureReason());
     }
 
 }

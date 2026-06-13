@@ -1,5 +1,9 @@
 package com.com4energy.processor.model;
 
+import com.com4energy.persistence.filerecord.enums.FileOrigin;
+import com.com4energy.persistence.filerecord.FileRecord;
+import com.com4energy.persistence.filerecord.enums.FileType;
+import com.com4energy.processor.factory.FileRecordFactory;
 import com.com4energy.processor.service.dto.FileContext;
 import com.com4energy.processor.service.validation.ValidationContext;
 import org.junit.jupiter.api.Test;
@@ -11,7 +15,7 @@ class FileRecordOriginTest {
 
     @Test
     void fromDefaultsToApiOrigin() {
-        FileRecord record = FileRecord.from(validContext("api-file.xml"));
+        FileRecord record = FileRecordFactory.from(validContext("api-file.xml"));
 
         assertEquals(FileOrigin.API, record.getOrigin());
         assertEquals(FileType.AWAITING_CLASSIFICATION, record.getType());
@@ -19,7 +23,7 @@ class FileRecordOriginTest {
 
     @Test
     void fromUsesExplicitOriginWhenProvided() {
-        FileRecord record = FileRecord.from(validContext("job-file.xml"), FileOrigin.JOB);
+        FileRecord record = FileRecordFactory.from(validContext("job-file.xml"), FileOrigin.JOB);
 
         assertEquals(FileOrigin.JOB, record.getOrigin());
         assertEquals(FileType.AWAITING_CLASSIFICATION, record.getType());
@@ -27,7 +31,7 @@ class FileRecordOriginTest {
 
     @Test
     void fromDetectsMeasureTypeByFilenamePrefix() {
-        FileRecord record = FileRecord.from(validContext("P1AA_BBBB_CCCC_DDDDDDD.0"));
+        FileRecord record = FileRecordFactory.from(validContext("P1AA_BBBB_CCCC_DDDDDDD.0"));
 
         assertEquals(FileType.MEDIDA_H_P1, record.getType());
     }

@@ -9,6 +9,9 @@ import java.util.Set;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 
+import com.com4energy.persistence.filerecord.enums.FileOrigin;
+import com.com4energy.persistence.filerecord.enums.FileStatus;
+import com.com4energy.persistence.filerecord.enums.FileType;
 import com.com4energy.processor.config.FeatureFlagService;
 import com.com4energy.processor.exception.DuplicateHashPersistenceException;
 import com.com4energy.processor.service.dto.FileHandlingResult;
@@ -16,14 +19,15 @@ import com.com4energy.processor.outbox.domain.OutboxAggregateType;
 import com.com4energy.processor.outbox.domain.OutboxEventType;
 import com.com4energy.processor.outbox.factory.OutboxEventFactory;
 import com.com4energy.processor.outbox.repository.OutboxEventRepository;
+import com.com4energy.processor.repository.FileRecordRepository;
 import org.hibernate.exception.ConstraintViolationException;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.com4energy.processor.model.*;
-import com.com4energy.processor.repository.FileRecordRepository;
+import com.com4energy.persistence.filerecord.*;
+import com.com4energy.processor.factory.FileRecordFactory;
 import com.com4energy.processor.service.processing.FileTypeProcessorRegistry;
 import com.com4energy.processor.config.properties.FileProcessingJobProperties;
 import com.com4energy.processor.config.InstanceIdentifier;
@@ -56,7 +60,7 @@ public class FileRecordService {
             return currentResult;
         }
 
-        FileRecord savedRecord = save(FileRecord.from(currentResult.fileContext(), origin), FileStatus.PENDING);
+        FileRecord savedRecord = save(FileRecordFactory.from(currentResult.fileContext(), origin), FileStatus.PENDING);
 
         if (savedRecord != null && savedRecord.getId() != null) {
             return currentResult.withPersistedInFileRecords();
@@ -383,6 +387,7 @@ public class FileRecordService {
         target.setParseDurationMs(source.getParseDurationMs());
         target.setProcessingDurationMs(source.getProcessingDurationMs());
         target.setHash(source.getHash());
+        target.setMeasureVersion(source.getMeasureVersion());
         target.setFailureReason(source.getFailureReason());
         target.setQualityStatus(source.getQualityStatus());
         target.setBusinessResult(source.getBusinessResult());

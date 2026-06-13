@@ -1,6 +1,6 @@
 package com.com4energy.processor.service.dto;
 
-import com.com4energy.processor.model.FailureReason;
+import com.com4energy.persistence.filerecord.enums.FailureReason;
 import lombok.Builder;
 
 import java.util.List;

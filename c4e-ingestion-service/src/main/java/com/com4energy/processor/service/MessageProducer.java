@@ -6,7 +6,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import com.com4energy.processor.config.RabbitConfig;
 import com.com4energy.processor.messaging.dto.FileMessage;
-import com.com4energy.processor.model.FileRecord;
+import com.com4energy.persistence.filerecord.FileRecord;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j

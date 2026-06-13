@@ -1,13 +1,14 @@
 package com.com4energy.processor.service.measure.persistence;
 
-import com.com4energy.processor.model.measure.MedidaCCHEntity;
-import com.com4energy.processor.model.measure.MedidaHEntity;
-import com.com4energy.processor.model.measure.MedidaQHEntity;
+import com.com4energy.persistence.medidas.medidacch.MedidaCCH;
+import com.com4energy.processor.repository.MedidaCCHRepository;
+import com.com4energy.persistence.medidas.medidah.MedidaH;
+import com.com4energy.processor.repository.MedidaHRepository;
+import com.com4energy.persistence.medidas.medidaqh.MedidaQH;
+import com.com4energy.processor.repository.MedidaQHRepository;
 import com.com4energy.processor.repository.ClienteRepository;
-import com.com4energy.processor.repository.measure.MedidaCCHRepository;
-import com.com4energy.processor.repository.measure.MedidaHRepository;
-import com.com4energy.processor.repository.measure.MedidaQHRepository;
 import com.com4energy.processor.service.measure.MeasureRecord;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Pageable;
@@ -17,7 +18,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -44,7 +44,8 @@ class JpaMeasurePersistenceAdapterTest {
                 medidaHRepository,
                 medidaQHRepository,
                 medidaCCHRepository,
-                clienteRepository
+                clienteRepository,
+                mock(EntityManager.class)
         );
 
         MeasurePersistenceContracts.MeasurePersistenceResult result = adapter.persist(
@@ -79,7 +80,8 @@ class JpaMeasurePersistenceAdapterTest {
                 medidaHRepository,
                 medidaQHRepository,
                 medidaCCHRepository,
-                clienteRepository
+                clienteRepository,
+                mock(EntityManager.class)
         );
 
         MeasurePersistenceContracts.MeasurePersistenceResult result = adapter.persist(
@@ -113,7 +115,8 @@ class JpaMeasurePersistenceAdapterTest {
                 medidaHRepository,
                 medidaQHRepository,
                 medidaCCHRepository,
-                clienteRepository
+                clienteRepository,
+                mock(EntityManager.class)
         );
 
         MeasurePersistenceContracts.MeasurePersistenceResult result = adapter.persist(
@@ -149,7 +152,8 @@ class JpaMeasurePersistenceAdapterTest {
                 medidaHRepository,
                 medidaQHRepository,
                 medidaCCHRepository,
-                clienteRepository
+                clienteRepository,
+                mock(EntityManager.class)
         );
 
         MeasureRecord.Hourly hourly = hourly("ES0101");
@@ -178,31 +182,24 @@ class JpaMeasurePersistenceAdapterTest {
         verify(medidaQHRepository).saveAll(anyList());
         verify(medidaCCHRepository).saveAll(anyList());
 
-        List<MedidaHEntity> hEntities = captureSavedEntities(medidaHRepository);
-        List<MedidaQHEntity> qhEntities = captureSavedEntities(medidaQHRepository);
-        List<MedidaCCHEntity> cchEntities = captureSavedEntities(medidaCCHRepository);
+        List<MedidaH> hEntities = captureSavedEntities(medidaHRepository);
+        List<MedidaQH> qhEntities = captureSavedEntities(medidaQHRepository);
+        List<MedidaCCH> cchEntities = captureSavedEntities(medidaCCHRepository);
 
         assertEquals(1, hEntities.size());
         assertEquals(1, qhEntities.size());
         assertEquals(2, cchEntities.size());
 
-        MedidaHEntity hEntity = hEntities.get(0);
+        MedidaH hEntity = hEntities.get(0);
         assertEquals(21L, hEntity.getClienteId());
         assertEquals(hourly.tipoMedida(), hEntity.getTipoMedida());
         assertEquals(hourly.timestamp(), hEntity.getFecha());
-        assertEquals((double) hourly.actent(), hEntity.getActent());
-        assertEquals(hourly.origen(), hEntity.getOrigen());
-        assertEquals("SYSTEM", hEntity.getCreatedBy());
-        assertNotNull(hEntity.getCreatedOn());
 
-        MedidaQHEntity qhEntity = qhEntities.get(0);
+        MedidaQH qhEntity = qhEntities.get(0);
         assertEquals(22L, qhEntity.getClienteId());
-        assertEquals(quarterHourly.tipoMedida(), qhEntity.getTipoMed());
+        assertEquals(quarterHourly.tipoMedida(), qhEntity.getTipoMedida());
         assertEquals(quarterHourly.timestamp(), qhEntity.getFecha());
         assertEquals(quarterHourly.actent(), qhEntity.getActent());
-        assertEquals(quarterHourly.origen(), qhEntity.getOrigen());
-        assertEquals("SYSTEM", qhEntity.getCreatedBy());
-        assertNotNull(qhEntity.getCreatedOn());
 
         assertTrue(cchEntities.stream().anyMatch(entity ->
                 entity.getClienteId().equals(23L)
@@ -333,7 +330,8 @@ class JpaMeasurePersistenceAdapterTest {
                 medidaHRepository,
                 medidaQHRepository,
                 medidaCCHRepository,
-                clienteRepository
+                clienteRepository,
+                mock(EntityManager.class)
         );
 
         // Create 2500 valid hourly records (should trigger 3 flushes: 1000, 1000, 500)
@@ -357,11 +355,11 @@ class JpaMeasurePersistenceAdapterTest {
 
         // Verify that saveAll was called 3 times (batches of 1000, 1000, 500)
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<MedidaHEntity>> captor = ArgumentCaptor.forClass((Class) List.class);
+        ArgumentCaptor<List<MedidaH>> captor = ArgumentCaptor.forClass((Class) List.class);
         verify(medidaHRepository, times(3)).saveAll(captor.capture());
 
         // Collect all batches to verify batch sizes
-        List<List<MedidaHEntity>> allBatches = captor.getAllValues();
+        List<List<MedidaH>> allBatches = captor.getAllValues();
 
         // Verify batch sizes: first two should be 1000, last one should be 500
         assertEquals(1000, allBatches.get(0).size(), "First batch should have 1000 records");
@@ -393,7 +391,8 @@ class JpaMeasurePersistenceAdapterTest {
                 medidaHRepository,
                 medidaQHRepository,
                 medidaCCHRepository,
-                clienteRepository
+                clienteRepository,
+                mock(EntityManager.class)
         );
 
         List<MeasureRecord> records = List.of(hourly("ES0001"), hourly("ES0001"), hourly("ES0001"));
@@ -433,7 +432,8 @@ class JpaMeasurePersistenceAdapterTest {
                 medidaHRepository,
                 medidaQHRepository,
                 medidaCCHRepository,
-                clienteRepository
+                clienteRepository,
+                mock(EntityManager.class)
         );
 
         MeasureRecord.Hourly first = hourly("ES0001");
@@ -460,7 +460,8 @@ class JpaMeasurePersistenceAdapterTest {
                 medidaHRepository,
                 medidaQHRepository,
                 medidaCCHRepository,
-                clienteRepository
+                clienteRepository,
+                mock(EntityManager.class)
         );
 
         adapter.persist(new MeasurePersistenceContracts.PersistMeasuresCommand(

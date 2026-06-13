@@ -1,7 +1,7 @@
 package com.com4energy.processor.service;
 
 import com.com4energy.processor.config.properties.FileScannerProperties;
-import com.com4energy.processor.model.FileOrigin;
+import com.com4energy.persistence.filerecord.enums.FileOrigin;
 import com.com4energy.processor.service.dto.FileBatchResult;
 import com.com4energy.processor.util.FileStorageUtil;
 import org.junit.jupiter.api.Test;

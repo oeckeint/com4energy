@@ -15,7 +15,7 @@ import com.com4energy.event.publisher.incident.contract.IncidentSeverity;
 import com.com4energy.event.publisher.incident.contract.IncidentStatus;
 import com.com4energy.event.publisher.incident.contract.IncidentType;
 import com.com4energy.processor.config.FeatureFlagService;
-import com.com4energy.processor.model.FileRecord;
+import com.com4energy.persistence.filerecord.FileRecord;
 import com.com4energy.processor.outbox.domain.OutboxEventType;
 import com.com4energy.processor.outbox.service.OutboxService;
 import com.fasterxml.jackson.core.JsonProcessingException;

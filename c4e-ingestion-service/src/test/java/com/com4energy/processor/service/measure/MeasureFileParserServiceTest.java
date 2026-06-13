@@ -1,6 +1,6 @@
 package com.com4energy.processor.service.measure;
 
-import com.com4energy.processor.model.FileType;
+import com.com4energy.persistence.filerecord.enums.FileType;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

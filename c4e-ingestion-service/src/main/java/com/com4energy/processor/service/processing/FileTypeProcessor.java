@@ -1,7 +1,7 @@
 package com.com4energy.processor.service.processing;
 
-import com.com4energy.processor.model.FileRecord;
-import com.com4energy.processor.model.FileType;
+import com.com4energy.persistence.filerecord.FileRecord;
+import com.com4energy.persistence.filerecord.enums.FileType;
 
 import java.nio.file.Path;
 import java.util.Set;
