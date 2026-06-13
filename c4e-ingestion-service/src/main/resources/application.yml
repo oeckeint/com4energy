@@ -1,0 +1,142 @@
+spring:
+  application:
+    name: c4e-ingestion-service
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${C4E_UPLOAD_MAX_FILE_SIZE}
+      max-request-size: ${C4E_UPLOAD_MAX_REQUEST_SIZE}
+  datasource:
+    url: ${DB_URL_SGE}
+    username: ${DB_USER_SGE}
+    password: ${DB_PASSWORD_SGE}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  liquibase:
+    enabled: false
+    change-log: classpath:db/changelog/db.changelog-master.xml
+  jpa:
+    hibernate:
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+    # Hibernate runtime properties (enable JDBC batching and ordering)
+    properties:
+      hibernate.jdbc.batch_size: 500
+      hibernate.order_inserts: true
+      hibernate.order_updates: true
+      # Enable generation of statistics to be able to verify batching at runtime
+      hibernate.generate_statistics: true
+      # Desactiva el listener de métricas por defecto (loguea en cada sesión, incluso
+      # SELECTs de polling) y registra uno propio que solo loguea cuando hay escrituras.
+      hibernate.session.events.log: false
+      hibernate.session.events.auto: com.com4energy.processor.config.persistence.ConditionalSessionMetricsListener
+
+server:
+  port: 8083
+
+logging:
+  level:
+    org.springframework: INFO
+    com.com4energy: INFO
+    root: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.engine.jdbc.batch: INFO
+    org.hibernate.stat: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,scheduledtasks
+  endpoint:
+    health:
+      show-details: always
+  health:
+    rabbit:
+      enabled: false
+
+c4e:
+  upload:
+    base-path: ${C4E_HOST_STORAGE_ROOT}/ingestion-service
+    pending-path: ${c4e.upload.base-path}/pending
+    processed-path: ${c4e.upload.base-path}/processed
+    processing-path: ${c4e.upload.base-path}/processing
+    duplicates-path: ${c4e.upload.base-path}/duplicates
+    failed-path: ${c4e.upload.base-path}/failed
+    rejected-path: ${c4e.upload.base-path}/rejected
+    archive-path: ${c4e.upload.base-path}/archive
+    automatic-path: ${c4e.upload.base-path}/automatic
+    max-size-bytes: ${C4E_UPLOAD_MAX_SIZE_BYTES}
+    max-files-per-request: ${C4E_UPLOAD_MAX_FILES_PER_REQUEST}
+    max-total-size-bytes: ${C4E_UPLOAD_MAX_TOTAL_SIZE_BYTES}
+    allowed-extensions:
+      - xml
+      - '0'
+      - '1'
+      - '2'
+      - '3'
+      - '4'
+      - '5'
+      - '6'
+      - '7'
+      - '8'
+      - '9'
+    allowed-content-types:
+      - text/xml
+      - application/xml
+      - application/x-xml
+      - text/plain
+      - application/octet-stream
+  incidents:
+    enabled: true
+    types:
+      validation:
+        exchange: incident.validation.exchange
+        routingKey: incident.validation.key
+      integration:
+        exchange: incident.integration.exchange
+        routingKey: incident.integration.key
+      system:
+        exchange: incident.system.exchange
+        routingKey: incident.system.key
+
+scanner:
+  paths:
+    - ${c4e.upload.automatic-path}
+  lock-path: ${c4e.upload.base-path}/.scanner-lock
+  lock-max-age-ms: 7200000
+  lock-maintenance-interval-ms: 300000
+  scan-interval-ms: 10000
+
+processor:
+  features:
+    max-retries: 5
+
+file:
+  processing:
+    interval-ms: 3000
+    batch-size: 10
+
+app:
+  feature:
+    enabled:
+      dev-mode: true
+      persist-data: true
+      send-messages: false
+      receive-messages: true
+      auto-purge-queue: false
+      retry-on-failure: false
+      validate-file-extension: true
+      skip-existing-files: false
+      dry-run-upload: false
+      store-in-pending-folder: true
+      compute-hash: true
+      verbose-logs: false
+      log-file-content: false
+      notify-on-error: true
+      mock-file-id: false
+      simulate-failure: true
+      delay-processing-ms: false
+      file-scanner-job: true
+      file-processing-job: true
+      file-retry-job: true
+      scanner-lock-maintenance-job: true
