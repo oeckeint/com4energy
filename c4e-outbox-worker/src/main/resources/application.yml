@@ -7,7 +7,8 @@ spring:
     password: ${DB_PASSWORD_SGE}
     driver-class-name: com.mysql.cj.jdbc.Driver
   liquibase:
-    enabled: true
+    # Schema ownership moved to the dedicated db-migrations runner.
+    enabled: false
     change-log: classpath:db/changelog/db.changelog-master.xml
 
 server:
