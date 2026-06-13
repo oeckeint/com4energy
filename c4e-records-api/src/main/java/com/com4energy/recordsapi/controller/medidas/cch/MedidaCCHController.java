@@ -8,7 +8,7 @@ import com.com4energy.recordsapi.controller.common.ResponseHelper;
 import com.com4energy.recordsapi.controller.common.dto.PageResponse;
 import com.com4energy.recordsapi.controller.medidas.DateRangeHelper;
 import com.com4energy.recordsapi.controller.medidas.MedidasConstants;
-import com.com4energy.recordsapi.domain.entity.medidas.MedidaCCH;
+import com.com4energy.persistence.medidas.medidacch.MedidaCCH;
 import com.com4energy.recordsapi.exception.ResourceNotFoundException;
 import com.com4energy.recordsapi.service.MedidaCCHService;
 import lombok.AllArgsConstructor;
@@ -17,17 +17,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.net.URI;
 import java.time.LocalDateTime;
 
 @RestController
@@ -39,7 +34,7 @@ public class MedidaCCHController {
 
     @GetMapping
     public ResponseEntity<PageResponse<MedidaCCH>> getAll(
-            @RequestParam(name = Constants.ID_CLIENTE, required = false) Integer idCliente,
+            @RequestParam(name = Constants.ID_CLIENTE, required = false) Long idCliente,
             @RequestParam(name = "startDate", required = false) String startDate,
             @RequestParam(name = "endDate", required = false) String endDate,
             @PageableDefault(
@@ -57,7 +52,7 @@ public class MedidaCCHController {
 
     @GetMapping(MedidaCCHConstants.LAST_24H_PATH)
     public ResponseEntity<PageResponse<MedidaCCH>> last24Hours(
-            @RequestParam(name = Constants.ID_CLIENTE, required = false) Integer idCliente,
+            @RequestParam(name = Constants.ID_CLIENTE, required = false) Long idCliente,
             @PageableDefault(
                     size = ApiConstants.DEFAULT_PAGE_SIZE,
                     sort = Constants.FECHA,
@@ -71,7 +66,7 @@ public class MedidaCCHController {
     }
 
     @GetMapping(ApiConstants.ID_PATH)
-    public ResponseEntity<MedidaCCH> getById(@PathVariable Integer id) {
+    public ResponseEntity<MedidaCCH> getById(@PathVariable Long id) {
 
         MedidaCCH medida = medidaCCHService.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -81,19 +76,8 @@ public class MedidaCCHController {
         return ResponseHelper.ok(medida);
     }
 
-    @PostMapping
-    public ResponseEntity<MedidaCCH> save(@Validated @RequestBody MedidaCCH medidaCCH) {
-        MedidaCCH saved = medidaCCHService.save(medidaCCH);
-        URI location = ServletUriComponentsBuilder
-                .fromCurrentRequest()
-                .path(ApiConstants.ID_PATH)
-                .buildAndExpand(saved.getId())
-                .toUri();
-        return ResponseHelper.created(location, saved);
-    }
-
     private ResponseEntity<PageResponse<MedidaCCH>> findMedidas(
-            Integer clienteId,
+            Long clienteId,
             DateRangeHelper.DateRange dateRange,
             Pageable pageable) {
 
@@ -107,6 +91,3 @@ public class MedidaCCHController {
         return ResponseHelper.page(result);
     }
 }
-
-
-

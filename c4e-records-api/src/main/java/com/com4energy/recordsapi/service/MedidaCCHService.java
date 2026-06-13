@@ -1,6 +1,6 @@
 package com.com4energy.recordsapi.service;
 
-import com.com4energy.recordsapi.domain.entity.medidas.MedidaCCH;
+import com.com4energy.persistence.medidas.medidacch.MedidaCCH;
 import com.com4energy.recordsapi.repository.MedidaCCHRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -16,17 +16,11 @@ public class MedidaCCHService {
 
     private final MedidaCCHRepository medidaCCHRepository;
 
-    public Page<MedidaCCH> findAll(Integer clienteId, LocalDateTime start, LocalDateTime end, Pageable pageable) {
+    public Page<MedidaCCH> findAll(Long clienteId, LocalDateTime start, LocalDateTime end, Pageable pageable) {
         return medidaCCHRepository.findByFilters(clienteId, start, end, pageable);
     }
 
-    public Optional<MedidaCCH> findById(Integer id) {
+    public Optional<MedidaCCH> findById(Long id) {
         return medidaCCHRepository.findById(id);
     }
-
-    public MedidaCCH save(MedidaCCH medidaCCH) {
-        return medidaCCHRepository.save(medidaCCH);
-    }
 }
-
-

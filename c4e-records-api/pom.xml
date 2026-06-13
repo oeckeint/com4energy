@@ -37,6 +37,11 @@
 		</dependency>
 		<dependency>
 			<groupId>com.com4energy</groupId>
+			<artifactId>c4e-persistence-core</artifactId>
+			<version>1.0.0-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>com.com4energy</groupId>
 			<artifactId>c4e-i18n-core</artifactId>
 			<version>0.1.0-SNAPSHOT</version>
 		</dependency>

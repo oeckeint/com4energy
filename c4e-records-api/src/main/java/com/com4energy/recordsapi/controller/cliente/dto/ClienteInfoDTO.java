@@ -10,7 +10,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ClienteInfoDTO {
-    private Integer idCliente;
+    private Long idCliente;
     private String cups;
     private String nombreCliente;
     private String tarifa;
