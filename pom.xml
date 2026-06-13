@@ -22,8 +22,6 @@
         <module>c4e-persistence-core</module>
         <module>c4e-outbox-worker</module>
         <module>c4e-ingestion-service</module>
-        <module>c4e-reprocessing-service</module>
-        <module>c4e-reporting-service</module>
         <module>c4e-records-api</module>
         <module>db-migrations</module>
         <module>ghost-flows</module>
