@@ -23,6 +23,9 @@ public class Cliente {
     @Column(name = "cups")
     private String cups;
 
+    @Column(name = "nombre_cliente")
+    private String nombreCliente;
+
     @Column(name = "tarifa")
     private String tarifa;
 
