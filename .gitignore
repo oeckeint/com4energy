@@ -1,8 +1,28 @@
+# Build output
 target/
 build/
 dist/
 node_modules/
 *.class
+
+# IDE
 *.iml
 .idea/
 .DS_Store
+
+# Secrets / environment files (NEVER commit) — templates *.env.example are allowed
+.env
+**/.env
+*.env
+!*.env.example
+!**/*.env.example
+
+# Keys / certificates
+*.key
+*.pem
+*.p12
+*.jks
+*.keystore
+
+# Jenkins runtime home — runtime data, must never be committed
+infra/jenkins/jenkins_home/
