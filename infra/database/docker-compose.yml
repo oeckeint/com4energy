@@ -1,0 +1,25 @@
+name: com4energy
+
+services:
+  mysql:
+    image: mysql:8.0.40
+    container_name: database
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    env_file:
+      - .env
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/backup_20250816_001617.sql:/docker-entrypoint-initdb.d/sge_backup.sql
+    networks:
+      - com4energy-net
+
+volumes:
+  mysql_data:
+
+networks:
+  com4energy-net:
+    external: true
+    name: com4energy-net
+

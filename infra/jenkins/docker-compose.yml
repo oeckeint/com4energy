@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  jenkins:
+    container_name: jenkins
+    image: custom-jenkins:latest
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8083:8080"     # UI web
+      - "50000:50000"   # Conexiones de agentes
+    volumes:
+      - ./jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock   # permite que Jenkins use Docker host
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false  # opcional: omite setup wizard

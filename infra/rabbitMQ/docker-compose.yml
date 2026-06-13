@@ -1,0 +1,25 @@
+name: com4energy
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "${RABBITMQ_PORT:?RABBITMQ_PORT is required}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:?RABBITMQ_MANAGEMENT_PORT is required}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      TZ: ${TZ:?TZ is required}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - com4energy-net
+
+volumes:
+  rabbitmq_data:
+
+networks:
+  com4energy-net:
+    external: true
+    name: com4energy-net

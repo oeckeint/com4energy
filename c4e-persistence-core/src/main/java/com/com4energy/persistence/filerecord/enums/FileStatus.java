@@ -1,0 +1,22 @@
+package com.com4energy.persistence.filerecord.enums;
+
+public enum FileStatus {
+    DUPLICATED,
+    DUPLICATED_ORIGINAL_FILENAME,
+    DUPLICATED_CONTENT,
+    FAILED,
+    CRITICAL_VALIDATION_FAILED,
+    REJECTED,
+    PENDING,
+    UPLOADED,
+    ALREADY_EXISTS,
+    CORRUPTED,
+    PROCESSING,
+    SUCCEEDED,
+    RETRY,
+    NEW,
+    DELETED,
+    VALID,
+    VALIDATION_FAILED,
+    NOT_STORED
+}

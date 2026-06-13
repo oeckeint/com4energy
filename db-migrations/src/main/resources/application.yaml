@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: db-migrations
+
+  datasource:
+    url: ${DB_URL_SGE}
+    username: ${DB_USER_SGE}
+    password: ${DB_PASSWORD_SGE}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+  main:
+    web-application-type: none
+
+logging:
+  level:
+    liquibase: INFO
+    root: INFO

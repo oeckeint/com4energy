@@ -1,0 +1,2 @@
+#Command to create container
+docker-compose -p com4energy up -d

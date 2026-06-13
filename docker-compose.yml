@@ -1,0 +1,293 @@
+services:
+
+  # ========================
+  # DATABASE
+  # ========================
+  database:
+    build:
+      context: ./infra/database
+      dockerfile: Dockerfile
+    container_name: com4energy-database
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:?TZ is required}
+      MYSQL_ROOT_PASSWORD: ${SGE_LOCAL_DB_ROOT_PWD:?SGE_LOCAL_DB_ROOT_PWD is required}
+      MYSQL_USER: ${DB_USER_SGE:?DB_USER_SGE is required}
+      MYSQL_PASSWORD: ${DB_PASSWORD_SGE:?DB_PASSWORD_SGE is required}
+      MYSQL_DATABASE: ${SGE_LOCAL_DB_NAME:?SGE_LOCAL_DB_NAME is required}
+    ports:
+      - "3306:3306"
+    networks:
+      - com4energy-net
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./infra/database/scripts/backup_20250816_001617.sql:/docker-entrypoint-initdb.d/sge_backup.sql
+    healthcheck:
+      # TCP ping over 127.0.0.1 only succeeds once init scripts finished and the
+      # real (networked) server is up — so dependents wait for a fully-loaded DB.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "${DB_USER_SGE}", "-p${DB_PASSWORD_SGE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  # ========================
+  # RABBITMQ
+  # ========================
+  rabbitmq:
+    build:
+      context: ./infra/rabbitMQ
+      dockerfile: Dockerfile
+    container_name: com4energy-rabbitmq
+    environment:
+      TZ: ${TZ:?TZ is required}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - com4energy-net
+
+  # ========================
+  # DB MIGRATIONS (one-shot Liquibase runner — single owner of the schema)
+  # Runs to completion before any app service starts. Idempotent on re-runs.
+  # ========================
+  db-migrations:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.db-migrations
+    container_name: com4energy-db-migrations
+    environment:
+      TZ: ${TZ:?TZ is required}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${TZ:?TZ is required}
+      DB_URL_SGE: jdbc:mysql://database:3306/sge?serverTimezone=${TZ:?TZ is required}
+      DB_USER_SGE: ${DB_USER_SGE:?DB_USER_SGE is required}
+      DB_PASSWORD_SGE: ${DB_PASSWORD_SGE:?DB_PASSWORD_SGE is required}
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - com4energy-net
+
+  # ========================
+  # RECORDS API
+  # ========================
+  records-api:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.records-api
+    container_name: com4energy-records-api
+    environment:
+      TZ: ${TZ:?TZ is required}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${TZ:?TZ is required}
+      DB_URL_SGE: jdbc:mysql://database:3306/sge?serverTimezone=${TZ:?TZ is required}&rewriteBatchedStatements=true
+      DB_HOST: database
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      DB_USER_SGE: ${DB_USER_SGE:?DB_USER_SGE is required}
+      DB_PASSWORD_SGE: ${DB_PASSWORD_SGE:?DB_PASSWORD_SGE is required}
+      SGE_LOCAL_DB_NAME: ${SGE_LOCAL_DB_NAME:?SGE_LOCAL_DB_NAME is required}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:?SPRING_PROFILES_ACTIVE is required}
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      db-migrations:
+        condition: service_completed_successfully
+    ports:
+      - "8082:8082"
+    networks:
+      - com4energy-net
+
+  # ========================
+  # GHOST FLOWS
+  # ========================
+  ghost-flows:
+    build:
+      context: ./ghost-flows
+      dockerfile: Dockerfile
+    container_name: com4energy-ghost-flows
+    environment:
+      TZ: ${TZ:?TZ is required}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${TZ:?TZ is required}
+      DB_HOST: database
+      DB_USER_SGE: ${DB_USER_SGE:?DB_USER_SGE is required}
+      SGE_LOCAL_DB_NAME: ${SGE_LOCAL_DB_NAME:?SGE_LOCAL_DB_NAME is required}
+      DATABASE_BACKUP_PATH: ${DATABASE_BACKUP_PATH:?DATABASE_BACKUP_PATH is required}
+      C4E_MY_CNF_FILE: ${C4E_MY_CNF_FILE:?C4E_MY_CNF_FILE is required}
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      records-api:
+        condition: service_started
+      db-migrations:
+        condition: service_completed_successfully
+    ports:
+      - "${C4E_GHOST_FLOWS_PORT:?C4E_GHOST_FLOWS_PORT is required}:8084"
+    networks:
+      - com4energy-net
+    volumes:
+      - ${DATABASE_BACKUP_PATH}:/app/database/backups
+      - ${C4E_MY_CNF_FILE:?C4E_MY_CNF_FILE is required}:/root/.my.cnf
+
+  # ========================
+  # SISTEMA GESTIÓN (FRONTEND TOMCAT)
+  # ========================
+  sistemagestion:
+    build:
+      context: ./sistemagestion
+      dockerfile: Dockerfile
+    container_name: com4energy-sistemagestion
+    environment:
+      TZ: ${TZ:?TZ is required}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${TZ:?TZ is required}
+      DB_HOST: database
+      DB_URL_SGE: jdbc:mysql://database:3306/sge?serverTimezone=${TZ:?TZ is required}&rewriteBatchedStatements=true
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      DB_USER_SGE: ${DB_USER_SGE:?DB_USER_SGE is required}
+      DB_PASSWORD_SGE: ${DB_PASSWORD_SGE:?DB_PASSWORD_SGE is required}
+      SGE_LOCAL_DB_NAME: ${SGE_LOCAL_DB_NAME:?SGE_LOCAL_DB_NAME is required}
+      C4E_STORAGE_ROOT: /usr/local/tomcat/resources
+      SFTP_HOST: ${SFTP_HOST:?SFTP_HOST is required}
+      SFTP_PORT: ${SFTP_PORT:?SFTP_PORT is required}
+      SFTP_USER: ${SFTP_USER:?SFTP_USER is required}
+      SFTP_PASSWORD: ${SFTP_PASSWORD:?SFTP_PASSWORD is required}
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      records-api:
+        condition: service_started
+      db-migrations:
+        condition: service_completed_successfully
+    ports:
+      - "7001:8080"
+    volumes:
+      - ${C4E_HOST_STORAGE_ROOT:?C4E_HOST_STORAGE_ROOT is required}:/usr/local/tomcat/resources
+    networks:
+      - com4energy-net
+
+  # ========================
+  # JENKINS (opcional)
+  # ========================
+  jenkins:
+    build:
+      context: ./infra/jenkins
+      dockerfile: Dockerfile
+    container_name: com4energy-jenkins
+    environment:
+      TZ: ${TZ:?TZ is required}
+    ports:
+      - "8085:8080"
+    networks:
+      - com4energy-net
+
+  # ========================
+  # INGESTION SERVICE
+  # ========================
+  ingestion-service:
+    build:
+      context: .
+      dockerfile: c4e-ingestion-service/Dockerfile
+    container_name: com4energy-ingestion-service
+    environment:
+      TZ: ${TZ:?TZ is required}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${TZ:?TZ is required}
+      DB_URL_SGE: jdbc:mysql://database:3306/sge?serverTimezone=${TZ:?TZ is required}&rewriteBatchedStatements=true
+      DB_USER_SGE: ${DB_USER_SGE:?DB_USER_SGE is required}
+      DB_PASSWORD_SGE: ${DB_PASSWORD_SGE:?DB_PASSWORD_SGE is required}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      C4E_HOST_STORAGE_ROOT: /var/c4e-storage
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:?SPRING_PROFILES_ACTIVE is required}
+      C4E_UPLOAD_MAX_FILE_SIZE: ${C4E_UPLOAD_MAX_FILE_SIZE:?C4E_UPLOAD_MAX_FILE_SIZE is required}
+      C4E_UPLOAD_MAX_REQUEST_SIZE: ${C4E_UPLOAD_MAX_REQUEST_SIZE:?C4E_UPLOAD_MAX_REQUEST_SIZE is required}
+      C4E_UPLOAD_MAX_SIZE_BYTES: ${C4E_UPLOAD_MAX_SIZE_BYTES:?C4E_UPLOAD_MAX_SIZE_BYTES is required}
+      C4E_UPLOAD_MAX_FILES_PER_REQUEST: ${C4E_UPLOAD_MAX_FILES_PER_REQUEST:?C4E_UPLOAD_MAX_FILES_PER_REQUEST is required}
+      C4E_UPLOAD_MAX_TOTAL_SIZE_BYTES: ${C4E_UPLOAD_MAX_TOTAL_SIZE_BYTES:?C4E_UPLOAD_MAX_TOTAL_SIZE_BYTES is required}
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      db-migrations:
+        condition: service_completed_successfully
+    ports:
+      - "8083:8083"
+    volumes:
+      - ${C4E_HOST_STORAGE_ROOT:?C4E_HOST_STORAGE_ROOT is required}:/var/c4e-storage
+    networks:
+      - com4energy-net
+
+  # ========================
+  # OUTBOX WORKER
+  # ========================
+  outbox-worker:
+    build:
+      context: .
+      dockerfile: c4e-outbox-worker/Dockerfile
+    container_name: com4energy-outbox-worker
+    environment:
+      TZ: ${TZ:?TZ is required}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${TZ:?TZ is required}
+      DB_URL_SGE: jdbc:mysql://database:3306/sge?serverTimezone=${TZ:?TZ is required}&rewriteBatchedStatements=true
+      DB_USER_SGE: ${DB_USER_SGE:?DB_USER_SGE is required}
+      DB_PASSWORD_SGE: ${DB_PASSWORD_SGE:?DB_PASSWORD_SGE is required}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      SERVER_PORT: 8090
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:?SPRING_PROFILES_ACTIVE is required}
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      db-migrations:
+        condition: service_completed_successfully
+    ports:
+      - "8090:8090"
+    networks:
+      - com4energy-net
+
+  # ========================
+  # DASHBOARD (ANGULAR + NGINX)
+  # ========================
+  dashboard:
+    build:
+      context: ./c4e-dashboard
+      dockerfile: Dockerfile
+    container_name: com4energy-dashboard
+    environment:
+      TZ: ${TZ:?TZ is required}
+    depends_on:
+      - records-api
+      - ingestion-service
+    ports:
+      - "${DASHBOARD_PORT:?DASHBOARD_PORT is required}:80"
+    networks:
+      - com4energy-net
+
+networks:
+  com4energy-net:
+    name: com4energy-net
+
+volumes:
+  mysql_data:
+    name: com4energy-mysql_data
+  jenkins_home:
+    name: com4energy-jenkins_home
