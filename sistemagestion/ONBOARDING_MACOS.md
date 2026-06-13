@@ -58,9 +58,9 @@ El archivo `~/.sistema_gestion_env.sh` incluye:
 - `RABBITMQ_HOST_DOCKER=rabbitmq`
 
 **Compartidas** (igual para ambos):
-- `DB_USER_SGE=admin`, `DB_PASSWORD_SGE=***REMOVED***`
+- `DB_USER_SGE=admin`, `DB_PASSWORD_SGE=<tu-password>`
 - `SFTP_HOST=127.0.0.1`, `SFTP_PORT=21`, `SFTP_USER=user1`
-- `C4E_HOST_STORAGE_ROOT=$HOME/Downloads/com4energy`
+- `C4E_HOST_STORAGE_ROOT=/opt/com4energy/storage`
 - `SPRING_PROFILES_ACTIVE=dev`
 
 ## Notas

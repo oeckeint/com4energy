@@ -10,5 +10,9 @@ WORKDIR /app
 # Copiar el JAR generado por Maven/Gradle al contenedor
 COPY target/ghost-flows-1.0.0.jar /app/app.jar
 
+# Entrypoint: genera /root/.my.cnf desde el entorno y arranca la app
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Comando para ejecutar la aplicación
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

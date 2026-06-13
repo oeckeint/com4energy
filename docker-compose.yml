@@ -117,9 +117,9 @@ services:
       JAVA_TOOL_OPTIONS: -Duser.timezone=${TZ:?TZ is required}
       DB_HOST: database
       DB_USER_SGE: ${DB_USER_SGE:?DB_USER_SGE is required}
+      DB_PASSWORD_SGE: ${DB_PASSWORD_SGE:?DB_PASSWORD_SGE is required}
       SGE_LOCAL_DB_NAME: ${SGE_LOCAL_DB_NAME:?SGE_LOCAL_DB_NAME is required}
       DATABASE_BACKUP_PATH: ${DATABASE_BACKUP_PATH:?DATABASE_BACKUP_PATH is required}
-      C4E_MY_CNF_FILE: ${C4E_MY_CNF_FILE:?C4E_MY_CNF_FILE is required}
     depends_on:
       database:
         condition: service_healthy
@@ -135,7 +135,6 @@ services:
       - com4energy-net
     volumes:
       - ${DATABASE_BACKUP_PATH}:/app/database/backups
-      - ${C4E_MY_CNF_FILE:?C4E_MY_CNF_FILE is required}:/root/.my.cnf
 
   # ========================
   # SISTEMA GESTIÓN (FRONTEND TOMCAT)

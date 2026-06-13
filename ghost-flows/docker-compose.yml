@@ -9,8 +9,8 @@ services:
     env_file:
       - .env
     volumes:
+      # /root/.my.cnf lo genera el entrypoint desde el entorno (ya no se monta)
       - ${DATABASE_BACKUP_PATH}:/app/database/backups
-      - ${C4E_MY_CNF_FILE:?C4E_MY_CNF_FILE is required}:/root/.my.cnf
     ports:
       - "${C4E_GHOST_FLOWS_PORT:?C4E_GHOST_FLOWS_PORT is required}:8084"
     networks:
