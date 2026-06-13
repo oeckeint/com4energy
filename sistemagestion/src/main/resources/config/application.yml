@@ -13,6 +13,8 @@ scripts:
 
 spring:
   liquibase:
+    # Schema ownership moved to the dedicated db-migrations runner.
+    enabled: false
     change-log: classpath:/db/changelog/db.changelog-master.xml
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
