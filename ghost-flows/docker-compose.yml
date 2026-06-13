@@ -1,0 +1,23 @@
+name: com4energy
+
+services:
+  com4energy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: com4energy-ghost-flows
+    env_file:
+      - .env
+    volumes:
+      - ${DATABASE_BACKUP_PATH}:/app/database/backups
+      - ${C4E_MY_CNF_FILE:?C4E_MY_CNF_FILE is required}:/root/.my.cnf
+    ports:
+      - "${C4E_GHOST_FLOWS_PORT:?C4E_GHOST_FLOWS_PORT is required}:8084"
+    networks:
+      - com4energy-net
+    restart: always
+
+networks:
+  com4energy-net:
+    external: true
+    name: com4energy-net
