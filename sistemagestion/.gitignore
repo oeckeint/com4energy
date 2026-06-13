@@ -1,0 +1,25 @@
+/bin/
+/target/
+.DS_Store
+.idea/compiler.xml
+.idea/encodings.xml
+.idea/hotswap_agent.xml
+.idea/jarRepositories.xml
+.idea/misc.xml
+.idea/vcs.xml
+.idea/workspace.xml
+.idea/**
+*.class
+target/classes/app/config/AppConfig.class
+SistemaGestion.iml
+src/main/resources/rebel.xml
+src/main/resources/persistence-mysql.properties
+notas.txt
+
+# Variables de entorno con credenciales reales — NUNCA al repo
+.env
+
+/scripts/
+
+# Documentacion local no versionada
+JIRA_TICKET_GUIDE.md
