@@ -1,0 +1,68 @@
+package com.com4energy.recordsapi.mapper;
+
+import com.com4energy.recordsapi.domain.entity.messaging.Incident;
+import com.com4energy.event.publisher.incident.contract.IncidentStatus;
+import com.com4energy.event.publisher.incident.contract.IncidentEvent;
+import com.com4energy.i18n.core.Messages;
+import com.com4energy.recordsapi.common.RecordsApiCommonMessageKey;
+import com.com4energy.recordsapi.common.StringRules;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+/**
+ * Convierte un {@link IncidentEvent} recibido por RabbitMQ en una entidad {@link Incident}
+ * lista para ser persistida.
+ *
+ * <p>El campo {@code metadata} se parsea como {@link JsonNode}; si no es JSON valido
+ * se almacena como nodo de texto para no perder la informacion.</p>
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class IncidentEventMapper {
+
+    private final ObjectMapper objectMapper;
+
+    public Incident toIncident(IncidentEvent event) {
+        JsonNode metadata = parsePayload(event.metadata());
+
+        return Incident.builder()
+                .serviceName(event.serviceName())
+                .environment(event.environment())
+                .endpoint(event.endpoint())
+                .methodName(event.methodName())
+                .httpMethod(event.httpMethod())
+                .userId(event.userId())
+                .exceptionType(event.exceptionType())
+                .message(event.message())
+                .stackTrace(event.stackTrace())
+                .category(event.category())
+                .severity(event.severity())
+                .status(event.status() != null ? event.status() : IncidentStatus.NEW)
+                .errorCode(event.errorCode())
+                .filename(event.filename())
+                .fileType(event.fileType())
+                .folderName(event.finalPath())
+                .createdBy(event.createdBy())
+                .updatedOn(event.updatedOn())
+                .updatedBy(event.updatedBy())
+                .metadata(metadata)
+                .build();
+    }
+
+
+    private JsonNode parsePayload(String payload) {
+        if (StringRules.isBlank(payload)) {
+            return null;
+        }
+        try {
+            return objectMapper.readTree(payload);
+        } catch (Exception e) {
+            log.warn(Messages.format(RecordsApiCommonMessageKey.INCIDENT_PAYLOAD_JSON_PARSE_ERROR, e.getMessage()));
+            return objectMapper.getNodeFactory().textNode(payload);
+        }
+    }
+}

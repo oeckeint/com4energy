@@ -1,0 +1,28 @@
+name: com4energy
+
+services:
+  records-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: records-api
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DB_HOST_DOCKER:?DB_HOST_DOCKER is required}
+      DB_URL_SGE: ${DB_URL_SGE_DOCKER:?DB_URL_SGE_DOCKER is required}
+      RABBITMQ_HOST: ${RABBITMQ_HOST_DOCKER:?RABBITMQ_HOST_DOCKER is required}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:?RABBITMQ_PORT is required}
+      RABBITMQ_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+    ports:
+      - "8082:8082"
+    networks:
+      - com4energy-net
+    restart: unless-stopped
+
+networks:
+  com4energy-net:
+    external: true
+    name: com4energy-net
+
