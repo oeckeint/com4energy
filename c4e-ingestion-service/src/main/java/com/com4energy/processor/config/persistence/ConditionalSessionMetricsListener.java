@@ -14,6 +14,12 @@ import org.slf4j.LoggerFactory;
  * genera ruido cíclico. Este listener mantiene exactamente las mismas métricas pero
  * suprime el log cuando no hubo trabajo de persistencia.
  *
+ * <p>Se loguea a nivel DEBUG: con el upsert escribiendo cada lote en su propia transacción
+ * ({@code REQUIRES_NEW}), un archivo grande genera ~N sesiones (una por lote de 1000) y a INFO
+ * inundaría el log. El resumen operativo por archivo lo da el evento {@code MEASURE_FILE_PROCESSED}
+ * (counts + persistMs); estas métricas por sesión quedan disponibles activando DEBUG para
+ * diagnóstico fino.
+ *
  * Registro (application.yml):
  * <pre>
  * spring.jpa.properties:
@@ -186,11 +192,11 @@ public class ConditionalSessionMetricsListener implements org.hibernate.SessionE
 
     @Override
     public void end() {
-        if (!performedWrites() || !LOG.isInfoEnabled()) {
+        if (!performedWrites() || !LOG.isDebugEnabled()) {
             return;
         }
 
-        LOG.info(
+        LOG.debug(
                 "Session Metrics {\n"
                         + "    {} nanoseconds spent acquiring {} JDBC connections;\n"
                         + "    {} nanoseconds spent releasing {} JDBC connections;\n"

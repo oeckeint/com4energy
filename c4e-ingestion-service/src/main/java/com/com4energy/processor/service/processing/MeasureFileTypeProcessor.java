@@ -9,6 +9,7 @@ import com.com4energy.persistence.filerecord.enums.BusinessResult;
 import com.com4energy.persistence.filerecord.enums.QualityStatus;
 import com.com4energy.processor.service.measure.MeasureFileParserService;
 import com.com4energy.processor.service.measure.MeasureParseResult;
+import com.com4energy.processor.service.measure.MeasureRevisionGuard;
 import com.com4energy.processor.service.measure.persistence.MeasurePersistenceContracts;
 import com.com4energy.processor.service.measure.validation.MeasureDefectReportService;
 import com.com4energy.processor.service.measure.validation.MeasureRecordValidationChain;
@@ -37,17 +38,20 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
     private final MeasurePersistenceContracts.MeasurePersistencePort measurePersistencePort;
     private final MeasureRecordValidationChain measureRecordValidationChain;
     private final MeasureDefectReportService measureDefectReportService;
+    private final MeasureRevisionGuard measureRevisionGuard;
 
     public MeasureFileTypeProcessor(
             MeasureFileParserService measureFileParserService,
             MeasurePersistenceContracts.MeasurePersistencePort measurePersistencePort,
             MeasureRecordValidationChain measureRecordValidationChain,
-            MeasureDefectReportService measureDefectReportService
+            MeasureDefectReportService measureDefectReportService,
+            MeasureRevisionGuard measureRevisionGuard
     ) {
         this.measureFileParserService = measureFileParserService;
         this.measurePersistencePort = measurePersistencePort;
         this.measureRecordValidationChain = measureRecordValidationChain;
         this.measureDefectReportService = measureDefectReportService;
+        this.measureRevisionGuard = measureRevisionGuard;
     }
 
     @Override
@@ -58,6 +62,21 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
     @Override
     public FileTypeProcessingResult process(FileRecord fileRecord, Path processingPath) {
         long parseStartedAtNanos = System.nanoTime();
+
+        // Guard de precedencia (autoritativo): si ya se aplicó una revisión igual o más reciente
+        // de esta familia, descartar antes del upsert para no pisar datos más nuevos.
+        if (measureRevisionGuard.isSupersededByApplied(fileRecord.getMeasureVersion())) {
+            String comment = "Revisión superseded: ya se aplicó una versión igual o más reciente de la familia";
+            log.info("Skipping file '{}' (id={}): {}", fileRecord.getOriginalFilename(), fileRecord.getId(), comment);
+            fileRecord.setBusinessResult(BusinessResult.NOT_PERSISTED);
+            // Reporta el rechazo al outbox worker (FILE_REJECTED) además de marcarlo en BD.
+            return FileTypeProcessingResult.rejected(
+                    FailureReason.SUPERSEDED_REVISION,
+                    comment,
+                    List.of(FileTypeProcessingResult.DeferredOutboxEvent.fileRejected())
+            );
+        }
+
         try {
             // Use the FileType from database (already classified at file ingestion)
             // Don't recalculate it - the job just reads and processes based on pre-classified type
@@ -65,32 +84,34 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
             long parseDurationMs = elapsedMillis(parseStartedAtNanos);
             fileRecord.setParseDurationMs(parseDurationMs);
 
-            if (result.hasErrors()) {
-                fileRecord.setProcessedRecords(result.successCount());
-                fileRecord.setDefectedRecords(result.errorCount());
-                fileRecord.setQualityStatus(QualityStatus.WITH_DEFECTS);
-                fileRecord.setBusinessResult(BusinessResult.NOT_PERSISTED);
-                Optional<Path> defectPath = measureDefectReportService.writeParseDefectReport(
-                        fileRecord.getOriginalFilename(),
-                        result.errors()
-                );
-                String comment = buildDefectComment(result.errorCount(), defectPath);
-                return FileTypeProcessingResult.failed(
-                        FailureReason.INVALID_FILE_FORMAT,
-                        comment,
-                        buildDefectReportDeferredEvents("parse", result.errorCount(), defectPath)
-                );
-            }
-
+            // Si NINGÚN registro parseó, el archivo es inservible -> fallo total (con el reporte de
+            // defectos de parseo si los hubo).
             if (result.records().isEmpty()) {
                 fileRecord.setProcessedRecords(0);
-                fileRecord.setDefectedRecords(0);
-                fileRecord.setQualityStatus(QualityStatus.NOT_EVALUATED);
+                fileRecord.setDefectedRecords(result.errorCount());
+                fileRecord.setQualityStatus(result.hasErrors() ? QualityStatus.WITH_DEFECTS : QualityStatus.NOT_EVALUATED);
                 fileRecord.setBusinessResult(BusinessResult.NOT_PERSISTED);
+                if (result.hasErrors()) {
+                    Optional<Path> parseDefectPath = measureDefectReportService.writeParseDefectReport(
+                            fileRecord.getOriginalFilename(), result.errors());
+                    return FileTypeProcessingResult.failed(
+                            FailureReason.INVALID_FILE_FORMAT,
+                            buildDefectComment(result.errorCount(), parseDefectPath),
+                            buildDefectReportDeferredEvents("parse", result.errorCount(), parseDefectPath));
+                }
                 return FileTypeProcessingResult.failed(
                         FailureReason.INVALID_FILE_FORMAT,
-                        "El archivo no contiene registros de medidas procesables"
-                );
+                        "El archivo no contiene registros de medidas procesables");
+            }
+
+            // Parseo TOLERANTE: las líneas con error de parseo se reportan como defecto y se continúa
+            // persistiendo las que sí parsearon (antes: una línea mala rechazaba el archivo completo).
+            List<FileTypeProcessingResult.DeferredOutboxEvent> deferredOutboxEvents = new ArrayList<>();
+            int parseErrorCount = result.errorCount();
+            if (result.hasErrors()) {
+                Optional<Path> parseDefectPath = measureDefectReportService.writeParseDefectReport(
+                        fileRecord.getOriginalFilename(), result.errors());
+                deferredOutboxEvents.addAll(buildDefectReportDeferredEvents("parse", parseErrorCount, parseDefectPath));
             }
 
             MeasureRecordValidationResult validationResult = measureRecordValidationChain.validate(
@@ -99,24 +120,51 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
             );
             int validationErrorCount = validationResult.errorCount();
 
+            // Indica si la familia ya tiene un archivo aplicado. Si NO, y el prefetch del adapter
+            // encuentra (cliente, fecha) existentes, son de otra familia -> colisión cross-familia.
+            boolean familyHasPriorMeasures = measureRevisionGuard.hasAppliedSibling(fileRecord.getMeasureVersion());
+
             long persistStartedAtNanos = System.nanoTime();
             MeasurePersistenceContracts.MeasurePersistenceResult persistenceResult = measurePersistencePort.persist(
                     new MeasurePersistenceContracts.PersistMeasuresCommand(
                             fileRecord.getId(),
                             fileRecord.getOriginalFilename(),
-                            validationResult.validRecords()
+                            validationResult.validRecords(),
+                            familyHasPriorMeasures
                     )
             );
             long persistDurationMs = elapsedMillis(persistStartedAtNanos);
 
-            int totalMeasuresInFile = result.successCount();
+            // Colisión cross-familia detectada en el pre-check (no se escribió nada) -> rechazar.
+            if (persistenceResult.crossFamilyCollision()) {
+                String comment = "Colisión cross-familia: (cliente, fecha) ya pertenecen a otra familia";
+                log.warn("Rechazando archivo '{}' (id={}): {}",
+                        fileRecord.getOriginalFilename(), fileRecord.getId(), comment);
+                fileRecord.setBusinessResult(BusinessResult.NOT_PERSISTED);
+                return FileTypeProcessingResult.rejected(
+                        FailureReason.CROSS_FAMILY_COLLISION,
+                        comment,
+                        List.of(FileTypeProcessingResult.DeferredOutboxEvent.fileRejected())
+                );
+            }
+
+            // total = TODAS las filas de medida que llegaron en el archivo (parsearon OK + fallaron al
+            // parsear). Así una sola invariante reconcilia el archivo completo:
+            //   total = persisted + updated + skipped + parseDefects + validationDefects + quarantined
+            int totalMeasuresInFile = result.successCount() + parseErrorCount;
             int persistedMeasures = persistenceResult.persistedCount();
-            int defectCount = validationErrorCount + persistenceResult.errorCount() + persistenceResult.failedRecords().size();
+            int updatedMeasures = persistenceResult.updatedCount();
+            // Buckets de defecto desglosados por capa (suman el agregado defectCount):
+            int parseDefects = parseErrorCount;                                       // no parsearon
+            int validationDefects = validationErrorCount + persistenceResult.errorCount(); // rechazados antes del INSERT
+            int quarantinedMeasures = persistenceResult.failedRecords().size();       // aislados por binary-split (constraint BD)
+            int defectCount = parseDefects + validationDefects + quarantinedMeasures;
             int skippedMeasures = persistenceResult.skippedCount();
+            // Manejados OK = insertados + actualizados (revisión) + omitidos (idénticos por hash).
+            int handledMeasures = persistedMeasures + updatedMeasures + skippedMeasures;
             boolean hasValidationOrPersistenceErrors = validationResult.hasErrors() || persistenceResult.hasErrors();
             boolean hasQuarantineRecords = persistenceResult.hasFailedRecords();
-            boolean hasDefects = hasValidationOrPersistenceErrors || hasQuarantineRecords;
-            List<FileTypeProcessingResult.DeferredOutboxEvent> deferredOutboxEvents = new ArrayList<>();
+            boolean hasDefects = parseErrorCount > 0 || hasValidationOrPersistenceErrors || hasQuarantineRecords;
             long totalProcessingMs = elapsedMillis(parseStartedAtNanos);
             FileType resolvedMeasureType = fileRecord.getType() != null
                     ? fileRecord.getType()
@@ -124,12 +172,13 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
             String measureType = resolvedMeasureType.name();
             String destinationStore = resolveDestinationStore(resolvedMeasureType);
 
-            fileRecord.setProcessedRecords(persistedMeasures);
+            fileRecord.setProcessedRecords(handledMeasures);
             fileRecord.setDefectedRecords(defectCount);
             fileRecord.setQualityStatus(hasDefects ? QualityStatus.WITH_DEFECTS : QualityStatus.CLEAN);
             if (!hasDefects) {
+                // Incluye el reproceso idéntico (todo omitido): sin defectos = éxito.
                 fileRecord.setBusinessResult(BusinessResult.FULLY_SUCCEEDED);
-            } else if (persistedMeasures > 0) {
+            } else if (handledMeasures > 0) {
                 fileRecord.setBusinessResult(BusinessResult.PARTIAL_SUCCEEDED);
             } else {
                 fileRecord.setBusinessResult(BusinessResult.NOT_PERSISTED);
@@ -148,7 +197,11 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
                     destinationStore,
                     totalProcessingMs,
                     parseDurationMs,
-                    persistDurationMs
+                    persistDurationMs,
+                    updatedMeasures,
+                    parseDefects,
+                    validationDefects,
+                    quarantinedMeasures
             ));
 
             if (!hasDefects) {
@@ -157,8 +210,12 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
                         + "\"targetTable\":\"" + destinationStore + "\","
                         + "\"total\":" + totalMeasuresInFile + ","
                         + "\"persisted\":" + persistedMeasures + ","
-                        + "\"defects\":" + defectCount + ","
+                        + "\"updated\":" + updatedMeasures + ","
                         + "\"skipped\":" + skippedMeasures + ","
+                        + "\"defects\":" + defectCount + ","
+                        + "\"parseDefects\":" + parseDefects + ","
+                        + "\"validationDefects\":" + validationDefects + ","
+                        + "\"quarantined\":" + quarantinedMeasures + ","
                         + "\"totalMs\":" + totalProcessingMs + ","
                         + "\"parseMs\":" + parseDurationMs + ","
                         + "\"persistMs\":" + persistDurationMs
@@ -177,14 +234,16 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
                     validationResult,
                     persistenceResult,
                     hasValidationOrPersistenceErrors,
-                    persistedMeasures,
+                    handledMeasures,
                     deferredOutboxEvents
             );
             if (defectResult.isPresent()) {
                 return defectResult.get();
             }
 
-            if (hasQuarantineRecords && persistedMeasures == 0) {
+            // Solo es fallo total si NADA se manejó OK (ni insert, ni update, ni skip) y hubo cuarentena.
+            // Con upsert, un archivo de corrección puede tener 0 inserts pero sí updates/skips válidos.
+            if (hasQuarantineRecords && handledMeasures == 0) {
                 String comment = "No se pudo persistir ninguna medida; registros aislados en cuarentena por persistencia.";
                 fileRecord.setComment(comment);
                 return FileTypeProcessingResult.failed(FailureReason.INVALID_FILE_FORMAT, comment, deferredOutboxEvents);
@@ -276,7 +335,7 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
             MeasureRecordValidationResult validationResult,
             MeasurePersistenceContracts.MeasurePersistenceResult persistenceResult,
             boolean hasValidationOrPersistenceErrors,
-            int persistedMeasures,
+            int handledMeasures,
             List<FileTypeProcessingResult.DeferredOutboxEvent> deferredOutboxEvents
     ) {
         if (!hasValidationOrPersistenceErrors) {
@@ -292,7 +351,8 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
         String comment = buildDefectComment(totalIncidents, defectPath);
         deferredOutboxEvents.addAll(buildDefectReportDeferredEvents("validation", totalIncidents, defectPath));
 
-        if (persistedMeasures > 0) {
+        // Éxito parcial si algo se manejó OK (insert/update/skip), aunque haya defectos.
+        if (handledMeasures > 0) {
             fileRecord.setComment(comment);
             return Optional.of(FileTypeProcessingResult.success(deferredOutboxEvents));
         }

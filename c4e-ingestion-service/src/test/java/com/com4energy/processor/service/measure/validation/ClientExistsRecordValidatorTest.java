@@ -3,7 +3,6 @@ package com.com4energy.processor.service.measure.validation;
 import com.com4energy.processor.repository.ClienteRepository;
 import com.com4energy.processor.service.measure.MeasureRecord;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,7 +10,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -19,14 +17,16 @@ import static org.mockito.Mockito.when;
 
 class ClientExistsRecordValidatorTest {
 
+    private static final String CUPS = "ES123456789012345678"; // 20 chars -> prefijo = el mismo
+
     @Test
     void returnsErrorWhenClientDoesNotExist() {
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
         ClientExistsRecordValidator validator = new ClientExistsRecordValidator(clienteRepository);
 
-        when(clienteRepository.findLookupByCups(eq("ES123456789012345678"), any(Pageable.class))).thenReturn(List.of());
+        when(clienteRepository.findLookupByCupsPrefixes(any())).thenReturn(List.of());
 
-        var result = validator.validate(hourly("ES123456789012345678"));
+        var result = validator.validate(hourly(CUPS));
 
         assertTrue(result.isPresent());
         assertTrue(result.get().contains("No se encontró cliente"));
@@ -37,10 +37,10 @@ class ClientExistsRecordValidatorTest {
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
         ClientExistsRecordValidator validator = new ClientExistsRecordValidator(clienteRepository);
 
-        when(clienteRepository.findLookupByCups(eq("ES123456789012345678"), any(Pageable.class)))
-                .thenReturn(List.of(client(1, null), client(2, null)));
+        when(clienteRepository.findLookupByCupsPrefixes(any()))
+                .thenReturn(List.of(prefixView(CUPS, 1, null), prefixView(CUPS, 2, null)));
 
-        var result = validator.validate(hourly("ES123456789012345678"));
+        var result = validator.validate(hourly(CUPS));
 
         assertTrue(result.isPresent());
         assertTrue(result.get().contains("más de un cliente"));
@@ -51,10 +51,10 @@ class ClientExistsRecordValidatorTest {
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
         ClientExistsRecordValidator validator = new ClientExistsRecordValidator(clienteRepository);
 
-        when(clienteRepository.findLookupByCups(eq("ES123456789012345678"), any(Pageable.class)))
-                .thenReturn(List.of(client(null, null)));
+        when(clienteRepository.findLookupByCupsPrefixes(any()))
+                .thenReturn(List.of(prefixView(CUPS, null, null)));
 
-        var result = validator.validate(hourly("ES123456789012345678"));
+        var result = validator.validate(hourly(CUPS));
 
         assertTrue(result.isPresent());
         assertTrue(result.get().contains("no tiene id_cliente"));
@@ -65,25 +65,25 @@ class ClientExistsRecordValidatorTest {
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
         ClientExistsRecordValidator validator = new ClientExistsRecordValidator(clienteRepository);
 
-        when(clienteRepository.findLookupByCups(eq("ES123456789012345678"), any(Pageable.class)))
-                .thenReturn(List.of(client(1, null)));
+        when(clienteRepository.findLookupByCupsPrefixes(any()))
+                .thenReturn(List.of(prefixView(CUPS, 1, null)));
 
-        var result = validator.validate(hourly("ES123456789012345678"));
+        var result = validator.validate(hourly(CUPS));
 
         assertTrue(result.isEmpty());
         assertEquals("CLIENT_EXISTS", validator.brokenRule());
     }
 
     @Test
-    void reusesLookupForRepeatedCupsWithinSameBatch() {
+    void resolvesClientsInSingleBatchQueryForRepeatedCups() {
         ClienteRepository clienteRepository = mock(ClienteRepository.class);
         ClientExistsRecordValidator validator = new ClientExistsRecordValidator(clienteRepository);
 
-        when(clienteRepository.findLookupByCups(eq("ES123456789012345678"), any(Pageable.class)))
-                .thenReturn(List.of(client(1, null)));
+        when(clienteRepository.findLookupByCupsPrefixes(any()))
+                .thenReturn(List.of(prefixView(CUPS, 1, null)));
 
-        MeasureRecord.Hourly first = hourly("ES123456789012345678");
-        MeasureRecord.Hourly second = hourly("ES123456789012345678");
+        MeasureRecord.Hourly first = hourly(CUPS);
+        MeasureRecord.Hourly second = hourly(CUPS);
 
         validator.beforeBatch(List.of(first, second));
         try {
@@ -93,7 +93,7 @@ class ClientExistsRecordValidatorTest {
             validator.afterBatch();
         }
 
-        verify(clienteRepository, times(1)).findLookupByCups(eq("ES123456789012345678"), any(Pageable.class));
+        verify(clienteRepository, times(1)).findLookupByCupsPrefixes(any());
     }
 
     private MeasureRecord.Hourly hourly(String cups) {
@@ -101,23 +101,23 @@ class ClientExistsRecordValidatorTest {
                 cups,
                 LocalDateTime.of(2025, 1, 1, 0, 0),
                 11,
-                0f,
-                1f,
-                0f,
-                0f,
-                0f,
-                0f,
-                0f,
-                0f,
-                0f,
-                0f,
-                0f,
-                0f,
-                0f,
-                128f,
-                0f,
-                128f,
-                0f,
+                0d,
+                1d,
+                0d,
+                0d,
+                0d,
+                0d,
+                0d,
+                0d,
+                0d,
+                0d,
+                0d,
+                0d,
+                0d,
+                128d,
+                0d,
+                128d,
+                0d,
                 1,
                 0,
                 "P1D_0021_0894_20240104.0",
@@ -125,8 +125,8 @@ class ClientExistsRecordValidatorTest {
         );
     }
 
-    private ClienteRepository.ClienteLookupView client(Integer id, String tarifa) {
-        return new ClienteRepository.ClienteLookupView() {
+    private ClienteRepository.ClientePrefixView prefixView(String cupsPrefix, Integer id, String tarifa) {
+        return new ClienteRepository.ClientePrefixView() {
             @Override
             public Integer getId() {
                 return id;
@@ -135,6 +135,11 @@ class ClientExistsRecordValidatorTest {
             @Override
             public String getTarifa() {
                 return tarifa;
+            }
+
+            @Override
+            public String getCupsPrefix() {
+                return cupsPrefix;
             }
         };
     }

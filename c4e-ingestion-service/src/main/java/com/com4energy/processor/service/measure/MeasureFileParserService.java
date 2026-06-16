@@ -90,23 +90,23 @@ public class MeasureFileParserService {
             String cups = cursor.nextRaw();
             int tipoMedida = cursor.nextInt(metadata.originalFilename(), lineNumber);
             LocalDateTime timestamp = cursor.nextTimestamp(metadata.originalFilename(), lineNumber);
-            float banderaInvVer = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float actent = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float qactent = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float actsal = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float qactsal = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float rQ1 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float qrQ1 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float rQ2 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float qrQ2 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float rQ3 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float qrQ3 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float rQ4 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float qrQ4 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float medres1 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float qmedres1 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float medres2 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
-            float qmedres2 = cursor.nextFloat(metadata.originalFilename(), lineNumber);
+            double banderaInvVer = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double actent = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double qactent = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double actsal = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double qactsal = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double rQ1 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double qrQ1 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double rQ2 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double qrQ2 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double rQ3 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double qrQ3 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double rQ4 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double qrQ4 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double medres1 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double qmedres1 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double medres2 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
+            double qmedres2 = cursor.nextDouble(metadata.originalFilename(), lineNumber);
             int metodObt = cursor.nextInt(metadata.originalFilename(), lineNumber);
             int temporal = cursor.nextInt(metadata.originalFilename(), lineNumber);
 
@@ -282,10 +282,10 @@ public class MeasureFileParserService {
             }
         }
 
-        private float nextFloat(String fileName, int lineNumber) {
+        private double nextDouble(String fileName, int lineNumber) {
             String value = nextRaw();
             try {
-                return Float.parseFloat(value);
+                return Double.parseDouble(value);
             } catch (NumberFormatException ex) {
                 throw conversionError(value, fileName, lineNumber);
             }

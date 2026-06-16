@@ -16,4 +16,5 @@ public class ClienteService {
     public Optional<ClienteInfoDTO> findClienteInfoById(Integer id) {
         return clienteRepository.findClienteInfoById(id);
     }
+
 }

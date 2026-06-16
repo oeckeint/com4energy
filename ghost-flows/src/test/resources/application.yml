@@ -1,0 +1,20 @@
+# Test-only config: provides fixed values for the placeholders that production
+# application.yml reads from the environment, so the Spring context loads in CI
+# without real env vars or a database (Quartz uses an in-memory job-store and
+# Hikari is configured with initialization-fail-timeout: -1).
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/sge
+    username: test
+    password: test
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      initialization-fail-timeout: -1
+
+mysql:
+  host: localhost
+  database: sge
+  username: test
+  backup:
+    path: /tmp/backups
+    ignored-tables: medida_h,medida_qh

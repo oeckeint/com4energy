@@ -394,9 +394,11 @@ class FileProcessingServiceImplTest {
                 );
         MeasureRecordValidationChain validationChain = new MeasureRecordValidationChain(List.of());
         MeasureDefectReportService defectReportService = mock(MeasureDefectReportService.class);
+        com.com4energy.processor.service.measure.MeasureRevisionGuard revisionGuard =
+                mock(com.com4energy.processor.service.measure.MeasureRevisionGuard.class);
         return new MeasureFileTypeProcessor(
                 new MeasureFileParserService(), persistencePort, validationChain,
-                defectReportService);
+                defectReportService, revisionGuard);
     }
 
     private Path createPendingFile(String content) throws IOException {

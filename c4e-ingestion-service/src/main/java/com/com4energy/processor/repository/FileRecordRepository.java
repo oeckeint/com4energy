@@ -13,11 +13,36 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface FileRecordRepository extends BaseFileRecordRepository {
+
+    /**
+     * Versiones (revision, iteration) registradas para una familia de archivos de medida, en los
+     * estados dados, ordenadas de mayor a menor. Para el guard de precedencia de revisión: el
+     * primer resultado es la versión más alta ya aplicada/viva. Usa idx_file_records_family_version.
+     */
+    @Query("""
+            select fr.measureVersion.revision as revision,
+                   fr.measureVersion.processingIteration as processingIteration
+            from FileRecord fr
+            where fr.measureVersion.sourceFamilyKey = :family
+              and fr.status in :statuses
+            order by fr.measureVersion.revision desc, fr.measureVersion.processingIteration desc
+            """)
+    List<AppliedVersionView> findFamilyVersions(
+            @Param("family") String family,
+            @Param("statuses") Collection<FileStatus> statuses,
+            Pageable pageable
+    );
+
+    interface AppliedVersionView {
+        Integer getRevision();
+        Integer getProcessingIteration();
+    }
 
     boolean existsByOriginalFilenameAndFinalPath(String originalFilename, String finalPath);
 

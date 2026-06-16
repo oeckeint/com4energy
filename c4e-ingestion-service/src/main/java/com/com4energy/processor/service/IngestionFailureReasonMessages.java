@@ -31,6 +31,8 @@ public final class IngestionFailureReasonMessages {
             case STORAGE_ERROR -> Messages.get(FAILURE_REASON_STORAGE_ERROR);
             case UNKNOWN_ERROR -> Messages.get(FAILURE_REASON_UNKNOWN_ERROR);
             case STALE_LOCK -> Messages.get(FAILURE_REASON_STALE_LOCK);
+            case SUPERSEDED_REVISION -> Messages.get(FAILURE_REASON_SUPERSEDED_REVISION);
+            case CROSS_FAMILY_COLLISION -> Messages.get(FAILURE_REASON_CROSS_FAMILY_COLLISION);
         };
     }
 

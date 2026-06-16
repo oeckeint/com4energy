@@ -322,6 +322,25 @@ public class FileProcessingServiceImpl implements FileProcessingService {
                 + "}";
     }
 
+    private String buildRejectedPayload(FileRecord fileRecord) {
+        String finalPath = fileRecord.getFinalPath() != null
+                ? "\"" + escapeJson(fileRecord.getFinalPath()) + "\""
+                : "null";
+        return "{"
+                + "\"fileRecordId\":" + fileRecord.getId() + ","
+                + "\"sourceId\":\"" + fileRecord.getId() + "\","
+                + "\"eventType\":\"FILE_REJECTED\","
+                + "\"filename\":\"" + escapeJson(fileRecord.getOriginalFilename()) + "\","
+                + "\"fileType\":\"" + safeName(fileRecord.getType()) + "\","
+                + "\"status\":\"" + safeName(fileRecord.getStatus()) + "\","
+                + "\"origin\":\"" + safeName(fileRecord.getOrigin()) + "\","
+                + "\"finalPath\":" + finalPath + ","
+                + "\"failureReason\":\"" + safeName(fileRecord.getFailureReason()) + "\","
+                + "\"comment\":\"" + escapeJson(fileRecord.getComment()) + "\","
+                + "\"occurredAt\":\"" + java.time.LocalDateTime.now() + "\""
+                + "}";
+    }
+
     private void publishDeferredOutboxEvents(FileRecord fileRecord, FileTypeProcessingResult result) {
         for (FileTypeProcessingResult.DeferredOutboxEvent deferredEvent : result.deferredOutboxEvents()) {
             try {
@@ -329,6 +348,7 @@ public class FileProcessingServiceImpl implements FileProcessingService {
                     case FILE_DEFECT_REPORT_CREATED -> buildDefectReportCreatedPayload(fileRecord, deferredEvent);
                     case FILE_PERSISTENCE_QUARANTINE -> buildPersistenceQuarantinePayload(fileRecord, deferredEvent);
                     case FILE_PROCESSING_PROCESSED -> buildMeasureProcessedPayload(fileRecord, deferredEvent);
+                    case FILE_REJECTED -> buildRejectedPayload(fileRecord);
                     default -> throw new IllegalArgumentException("Unsupported deferred outbox event: " + deferredEvent.eventType());
                 };
 

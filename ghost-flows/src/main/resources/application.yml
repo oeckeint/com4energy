@@ -4,6 +4,15 @@ spring:
   quartz:
     auto-startup: true
     job-store-type: memory
+  datasource:
+    url: ${DB_URL_SGE}
+    username: ${DB_USER_SGE}
+    password: ${DB_PASSWORD_SGE}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # Arranca sin abrir conexión: el job se conecta bajo demanda y el boot no
+      # depende de que la BD esté disponible.
+      initialization-fail-timeout: -1
 
 server:
   port: 8084
@@ -14,6 +23,9 @@ mysql:
   username: ${DB_USER_SGE}
   backup:
     path: /app/database/backups
+    # Tablas de medidas excluidas del backup por ser muy pesadas (su esquema lo
+    # recrea db-migrations). Quitar de aquí para volver a incluirlas.
+    ignored-tables: medida_h,medida_qh,medida_h_legacy,medida_qh_legacy,medida_cch_legacy
 
 ---
 spring:

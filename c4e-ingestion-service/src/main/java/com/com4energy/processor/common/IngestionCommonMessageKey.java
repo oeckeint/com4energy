@@ -53,7 +53,9 @@ public enum IngestionCommonMessageKey implements MessageKey {
     FAILURE_REASON_NULL_FILE("ingestion.failure.reason.null-file"),
     FAILURE_REASON_STORAGE_ERROR("ingestion.failure.reason.storage-error"),
     FAILURE_REASON_UNKNOWN_ERROR("ingestion.failure.reason.unknown-error"),
-    FAILURE_REASON_STALE_LOCK("ingestion.failure.reason.stale-lock");
+    FAILURE_REASON_STALE_LOCK("ingestion.failure.reason.stale-lock"),
+    FAILURE_REASON_SUPERSEDED_REVISION("ingestion.failure.reason.superseded-revision"),
+    FAILURE_REASON_CROSS_FAMILY_COLLISION("ingestion.failure.reason.cross-family-collision");
 
     private final String key;
 

@@ -28,6 +28,11 @@ public class DatabaseService {
     @Value("${mysql.backup.path}")
     private String backupPath;
 
+    // Tablas excluidas del dump (CSV). Por ahora las de medidas: son muy pesadas y
+    // su esquema lo recrea db-migrations. Vacío = no excluir ninguna extra.
+    @Value("${mysql.backup.ignored-tables:}")
+    private String ignoredTablesCsv;
+
     private static final int TIMEOUT_MINUTES = 10;
 
     public void backup() throws JobExecutionException {
@@ -103,6 +108,13 @@ public class DatabaseService {
 
         command.add("--ignore-table=" + database + ".schema_table_statistics");
         command.add("--ignore-table=" + database + ".schema_table_statistics_with_buffer");
+
+        for (String table : ignoredTablesCsv.split(",")) {
+            String name = table.trim();
+            if (!name.isEmpty()) {
+                command.add("--ignore-table=" + database + "." + name);
+            }
+        }
 
         command.add(database);
 

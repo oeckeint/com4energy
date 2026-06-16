@@ -7,20 +7,21 @@ import com.com4energy.processor.repository.MedidaHRepository;
 import com.com4energy.persistence.medidas.medidaqh.MedidaQH;
 import com.com4energy.processor.repository.MedidaQHRepository;
 import com.com4energy.processor.repository.ClienteRepository;
+import com.com4energy.processor.repository.ExistingMeasureView;
 import com.com4energy.processor.service.measure.MeasureRecord;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.FlushModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -29,75 +30,105 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
 
     private static final int DEFAULT_BATCH_SIZE = 1000;
     private static final int DEFAULT_PAYLOAD_HASH_VERSION = 1;
+    // 8 bytes (64 bits) = BINARY(8) en BD; suficiente para change-detection 1-vs-1.
+    private static final int PAYLOAD_HASH_BYTES = 8;
+    // Longitud del prefijo de CUPS contra el que se casa cliente.cups.
+    private static final int CUPS_PREFIX_LENGTH = 20;
 
     private final MedidaHRepository medidaHRepository;
     private final MedidaQHRepository medidaQHRepository;
     private final MedidaCCHRepository medidaCCHRepository;
     private final ClienteRepository clienteRepository;
-    private final EntityManager entityManager;
+    // Escribe cada lote en su propia transacción (REQUIRES_NEW) -> commit parcial real del binary-split.
+    private final MeasureBatchWriter measureBatchWriter;
 
     // Contexto para tracking durante binary split
     private final ThreadLocal<BatchSplitContext> batchContext = ThreadLocal.withInitial(BatchSplitContext::new);
 
+    // NO es @Transactional: cada lote se escribe vía MeasureBatchWriter (REQUIRES_NEW) con su propia
+    // transacción. El prefetch/resolución son lecturas. Así el binary-split logra commit parcial.
     @Override
-    @Transactional
     public MeasurePersistenceContracts.MeasurePersistenceResult persist(
             MeasurePersistenceContracts.PersistMeasuresCommand command
     ) {
         BatchSplitContext context = batchContext.get();
         context.reset();
 
-        // Evita el autoflush O(n^2): por defecto Hibernate flushea el persistence context
-        // ANTES de cada SELECT (p.ej. resolveClient -> findLookupByCups), re-verificando todas
-        // las entidades acumuladas. Con COMMIT, el flush ocurre una sola vez al final.
-        entityManager.setFlushMode(FlushModeType.COMMIT);
-
         List<String> errors = new ArrayList<>();
-        Map<String, ClienteResolution> clientCache = new HashMap<>();
+        // Resolución de clientes en UNA sola consulta por archivo (antes: N+1 por CUPS distinto).
+        Map<String, ClienteResolution> clientsByPrefix = resolveClientsByPrefix(command.measureRecords());
 
-        List<MedidaH> p1Batch = new ArrayList<>();
-        List<MedidaQH> p2Batch = new ArrayList<>();
-        List<MedidaCCH> cchBatch = new ArrayList<>();
+        // Pre-carga del upsert: una consulta por tipo trae las medidas ya existentes para la
+        // business key (id_cliente, fecha) presente en el archivo. La decisión insert/omitir/update
+        // se hace exacta por par en memoria (maneja fechas repetidas por cliente y fechas nuevas).
+        ExistingMeasures existing = preloadExisting(command.measureRecords(), clientsByPrefix);
+
+        // Pre-check cross-familia: si la familia NO tiene archivo previo aplicado pero el prefetch
+        // encontró (cliente, fecha) existentes, esas filas son de OTRA familia -> se rechaza el
+        // archivo SIN escribir nada (uk_business es global). Más limpio que escribir y revertir.
+        if (!command.familyHasPriorApplied() && !existing.isEmpty()) {
+            log.warn(
+                    "Rechazando archivo (id={}): colisión cross-familia — (cliente, fecha) ya pertenecen a otra familia",
+                    command.fileRecordId()
+            );
+            return MeasurePersistenceContracts.MeasurePersistenceResult.crossFamilyRejected();
+        }
+
+        List<MedidaH> p1Insert = new ArrayList<>();
+        List<MedidaH> p1Update = new ArrayList<>();
+        List<MedidaQH> p2Insert = new ArrayList<>();
+        List<MedidaQH> p2Update = new ArrayList<>();
+        List<MedidaCCH> cchInsert = new ArrayList<>();
 
         int skipped = 0;
-        int persisted = 0;
+        int inserted = 0;
+        int updated = 0;
 
         try {
             for (MeasureRecord measureRecord : command.measureRecords()) {
-                ClienteResolution resolution = resolveClient(measureRecord.cups(), clientCache);
-                boolean hasInvalidClient = !resolution.valid();
-
-                if (hasInvalidClient) {
+                ClienteResolution resolution = resolveClient(measureRecord.cups(), clientsByPrefix);
+                if (!resolution.valid()) {
                     errors.add(resolution.errorMessage());
-                } else {
-                    if (measureRecord instanceof MeasureRecord.Hourly hourly) {
-                        MedidaH entity = toMedidaH(hourly, resolution.clientId(), command);
-                        context.registerSource(entity, measureRecord);
-                        p1Batch.add(entity);
-                    } else if (measureRecord instanceof MeasureRecord.QuarterHourly quarterHourly) {
-                        MedidaQH entity = toMedidaQH(quarterHourly, resolution.clientId(), command);
-                        context.registerSource(entity, measureRecord);
-                        p2Batch.add(entity);
-                    } else if (measureRecord instanceof MeasureRecord.Cch cch) {
-                        MedidaCCH entity = toMedidaCch(cch, resolution.clientId());
-                        context.registerSource(entity, measureRecord);
-                        cchBatch.add(entity);
-                    }
+                    continue;
+                }
 
-                    // Persist in batches to optimize performance while maintaining transactional integrity
-                    if (p1Batch.size() + p2Batch.size() + cchBatch.size() >= DEFAULT_BATCH_SIZE) {
-                        persisted += flushBatches(p1Batch, p2Batch, cchBatch);
+                if (measureRecord instanceof MeasureRecord.Hourly hourly) {
+                    MedidaH entity = toMedidaH(hourly, resolution.clientId(), command);
+                    BusinessKey key = new BusinessKey(resolution.clientId(), hourly.timestamp());
+                    if (routeUpsert(entity, existing.h().get(key), measureRecord, context, p1Insert, p1Update)
+                            == UpsertDecision.SKIP) {
+                        skipped++;
                     }
+                } else if (measureRecord instanceof MeasureRecord.QuarterHourly quarterHourly) {
+                    MedidaQH entity = toMedidaQH(quarterHourly, resolution.clientId(), command);
+                    BusinessKey key = new BusinessKey(resolution.clientId(), quarterHourly.timestamp());
+                    if (routeUpsert(entity, existing.qh().get(key), measureRecord, context, p2Insert, p2Update)
+                            == UpsertDecision.SKIP) {
+                        skipped++;
+                    }
+                } else if (measureRecord instanceof MeasureRecord.Cch cch) {
+                    // CCH (medida_cch_legacy) no tiene payload_hash: insert-only por ahora.
+                    // TODO: cuando exista medida_cch (kernel) con payload_hash + uk_business,
+                    // aplicar el mismo upsert (preload + omitir/UPDATE in-place) que H/QH.
+                    MedidaCCH entity = toMedidaCch(cch, resolution.clientId());
+                    context.registerSource(entity, measureRecord);
+                    cchInsert.add(entity);
+                }
+
+                if (pendingCount(p1Insert, p1Update, p2Insert, p2Update, cchInsert) >= DEFAULT_BATCH_SIZE) {
+                    inserted += flushInserts(p1Insert, p2Insert, cchInsert);
+                    updated += flushUpdates(p1Update, p2Update);
                 }
             }
 
-            // Flush any remaining records
-            persisted += flushBatches(p1Batch, p2Batch, cchBatch);
+            inserted += flushInserts(p1Insert, p2Insert, cchInsert);
+            updated += flushUpdates(p1Update, p2Update);
 
             return new MeasurePersistenceContracts.MeasurePersistenceResult(
-                    persisted,
-                    errors.size(),
+                    inserted,
+                    updated,
                     skipped,
+                    errors.size(),
                     errors,
                     context.getFailedRecords(),
                     null
@@ -108,51 +139,161 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
         }
     }
 
-    /**
-     * Persiste los lotes acumulados con binary split en caso de error.
-     * Si saveAll falla, divide recursivamente el lote hasta aislar registros malos.
-     * Acumula los registros que fallan en el contexto de batch.
-     *
-     * @return número de registros persistidos
-     */
-    private int flushBatches(
-            List<MedidaH> p1Batch,
-            List<MedidaQH> p2Batch,
-            List<MedidaCCH> cchBatch
-    ) {
-        int persistedCount = 0;
-
-        if (!p1Batch.isEmpty()) {
-            persistedCount += flushWithBinarySplit(p1Batch, medidaHRepository, EntityType.P1_H);
-            p1Batch.clear();
-        }
-        if (!p2Batch.isEmpty()) {
-            persistedCount += flushWithBinarySplit(p2Batch, medidaQHRepository, EntityType.P2_QH);
-            p2Batch.clear();
-        }
-        if (!cchBatch.isEmpty()) {
-            persistedCount += flushWithBinarySplit(cchBatch, medidaCCHRepository, EntityType.F5_CCH);
-            cchBatch.clear();
-        }
-
-        return persistedCount;
+    private enum UpsertDecision {
+        INSERT, UPDATE, SKIP
     }
 
     /**
-     * Flush con binary split: intenta persistir lote.
-     * Si falla, divide recursivamente hasta aislar el registro problemático.
+     * Clasifica una entidad según su business key contra lo ya existente:
+     * sin existente → INSERT; existe + hash igual → SKIP (no se agrega a ningún lote);
+     * existe + hash distinto → UPDATE in-place (mismo id, todas las columnas nuevas).
      */
-    private <T> int flushWithBinarySplit(
-            List<T> batch,
-            org.springframework.data.jpa.repository.JpaRepository<T, ?> repository,
-            EntityType entityType
+    private <T> UpsertDecision routeUpsert(
+            T entity,
+            ExistingMeasure existing,
+            MeasureRecord sourceRecord,
+            BatchSplitContext context,
+            List<T> insertBatch,
+            List<T> updateBatch
     ) {
+        if (existing == null) {
+            context.registerSource(entity, sourceRecord);
+            insertBatch.add(entity);
+            return UpsertDecision.INSERT;
+        }
+        if (Arrays.equals(existing.payloadHash(), payloadHashOf(entity))) {
+            // hash idéntico → la fila no cambió → omitir (cero escrituras).
+            return UpsertDecision.SKIP;
+        }
+        setId(entity, existing.id());
+        context.registerSource(entity, sourceRecord);
+        updateBatch.add(entity);
+        return UpsertDecision.UPDATE;
+    }
+
+    private byte[] payloadHashOf(Object entity) {
+        if (entity instanceof MedidaH medidaH) {
+            return medidaH.getPayloadHash();
+        }
+        if (entity instanceof MedidaQH medidaQH) {
+            return medidaQH.getPayloadHash();
+        }
+        return null;
+    }
+
+    private void setId(Object entity, Long id) {
+        if (entity instanceof MedidaH medidaH) {
+            medidaH.setId(id);
+        } else if (entity instanceof MedidaQH medidaQH) {
+            medidaQH.setId(id);
+        }
+    }
+
+    private int pendingCount(List<?>... batches) {
+        int total = 0;
+        for (List<?> batch : batches) {
+            total += batch.size();
+        }
+        return total;
+    }
+
+    /**
+     * Pre-carga las medidas existentes (por tipo) para las business keys del archivo.
+     * Una sola consulta por tipo: usa uk_*_business + partition pruning por fecha.
+     */
+    private ExistingMeasures preloadExisting(
+            List<MeasureRecord> records,
+            Map<String, ClienteResolution> clientsByPrefix
+    ) {
+        Set<Integer> hClienteIds = new HashSet<>();
+        Set<LocalDateTime> hFechas = new HashSet<>();
+        Set<Integer> qhClienteIds = new HashSet<>();
+        Set<LocalDateTime> qhFechas = new HashSet<>();
+
+        for (MeasureRecord record : records) {
+            ClienteResolution resolution = resolveClient(record.cups(), clientsByPrefix);
+            if (!resolution.valid()) {
+                continue;
+            }
+            if (record instanceof MeasureRecord.Hourly hourly) {
+                hClienteIds.add(resolution.clientId());
+                hFechas.add(hourly.timestamp());
+            } else if (record instanceof MeasureRecord.QuarterHourly quarterHourly) {
+                qhClienteIds.add(resolution.clientId());
+                qhFechas.add(quarterHourly.timestamp());
+            }
+            // CCH: insert-only, no se pre-carga.
+        }
+
+        Map<BusinessKey, ExistingMeasure> h = hClienteIds.isEmpty()
+                ? Map.of()
+                : toExistingMap(medidaHRepository.findExistingByClienteIdsAndFechas(hClienteIds, hFechas));
+        Map<BusinessKey, ExistingMeasure> qh = qhClienteIds.isEmpty()
+                ? Map.of()
+                : toExistingMap(medidaQHRepository.findExistingByClienteIdsAndFechas(qhClienteIds, qhFechas));
+
+        return new ExistingMeasures(h, qh);
+    }
+
+    private Map<BusinessKey, ExistingMeasure> toExistingMap(List<ExistingMeasureView> views) {
+        Map<BusinessKey, ExistingMeasure> map = new HashMap<>();
+        for (ExistingMeasureView view : views) {
+            map.put(
+                    new BusinessKey(view.getClienteId(), view.getFecha()),
+                    new ExistingMeasure(view.getId(), view.getPayloadHash())
+            );
+        }
+        return map;
+    }
+
+    private int flushInserts(List<MedidaH> p1, List<MedidaQH> p2, List<MedidaCCH> cch) {
+        int persistedCount = 0;
+        if (!p1.isEmpty()) {
+            persistedCount += flushWithBinarySplit(p1, batch -> measureBatchWriter.insertBatch(medidaHRepository, batch), EntityType.P1_H);
+            p1.clear();
+        }
+        if (!p2.isEmpty()) {
+            persistedCount += flushWithBinarySplit(p2, batch -> measureBatchWriter.insertBatch(medidaQHRepository, batch), EntityType.P2_QH);
+            p2.clear();
+        }
+        if (!cch.isEmpty()) {
+            persistedCount += flushWithBinarySplit(cch, batch -> measureBatchWriter.insertBatch(medidaCCHRepository, batch), EntityType.F5_CCH);
+            cch.clear();
+        }
+        return persistedCount;
+    }
+
+    private int flushUpdates(List<MedidaH> p1, List<MedidaQH> p2) {
+        int updatedCount = 0;
+        if (!p1.isEmpty()) {
+            updatedCount += flushWithBinarySplit(p1, batch -> measureBatchWriter.updateBatch(medidaHRepository, batch), EntityType.P1_H);
+            p1.clear();
+        }
+        if (!p2.isEmpty()) {
+            updatedCount += flushWithBinarySplit(p2, batch -> measureBatchWriter.updateBatch(medidaQHRepository, batch), EntityType.P2_QH);
+            p2.clear();
+        }
+        return updatedCount;
+    }
+
+    /** Estrategia de persistencia de un lote en su propia transacción (insert / update vía MeasureBatchWriter). */
+    @FunctionalInterface
+    private interface BatchPersister<T> {
+        void persist(List<T> batch);
+    }
+
+    /**
+     * Persiste un lote con binary split: si falla, divide recursivamente hasta aislar el
+     * registro problemático y lo manda a cuarentena.
+     *
+     * @return número de registros persistidos
+     */
+    private <T> int flushWithBinarySplit(List<T> batch, BatchPersister<T> persister, EntityType entityType) {
         if (batch.isEmpty()) {
             return 0;
         }
-
         try {
-            repository.saveAll(new ArrayList<>(batch));
+            persister.persist(new ArrayList<>(batch));
             return batch.size();
         } catch (Exception e) {
             log.warn(
@@ -161,26 +302,21 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
                     entityType,
                     e.getMessage()
             );
-            return binarySplitAndPersist(batch, repository, entityType, e.getMessage());
+            // La transacción REQUIRES_NEW del lote fallido ya se revirtió sola; reintentamos mitades.
+            return binarySplitAndPersist(batch, persister, entityType, e.getMessage());
         }
     }
 
-    /**
-     * Binary split recursivo: divide lote por mitad y reintenta.
-     * Acumula registros que fallan en el contexto para cuarentena.
-     */
     private <T> int binarySplitAndPersist(
             List<T> batch,
-            org.springframework.data.jpa.repository.JpaRepository<T, ?> repository,
+            BatchPersister<T> persister,
             EntityType entityType,
             String errorMessage
     ) {
         if (batch.isEmpty()) {
             return 0;
         }
-
         if (batch.size() == 1) {
-            // Base case: 1 registro = es el malo
             logFailedRecord(entityType, errorMessage);
             batchContext.get().addFailedEntity(batch.get(0));
             return 0;
@@ -191,27 +327,18 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
         List<T> second = new ArrayList<>(batch.subList(mid, batch.size()));
 
         int persistedCount = 0;
-
-        // Reintenta primera mitad
         try {
-            repository.saveAll(first);
+            persister.persist(first);
             persistedCount += first.size();
-            log.debug("First half ({} records) persisted successfully", first.size());
         } catch (Exception e) {
-            log.debug("First half failed, recursing with {} records", first.size());
-            persistedCount += binarySplitAndPersist(first, repository, entityType, e.getMessage());
+            persistedCount += binarySplitAndPersist(first, persister, entityType, e.getMessage());
         }
-
-        // Reintenta segunda mitad
         try {
-            repository.saveAll(second);
+            persister.persist(second);
             persistedCount += second.size();
-            log.debug("Second half ({} records) persisted successfully", second.size());
         } catch (Exception e) {
-            log.debug("Second half failed, recursing with {} records", second.size());
-            persistedCount += binarySplitAndPersist(second, repository, entityType, e.getMessage());
+            persistedCount += binarySplitAndPersist(second, persister, entityType, e.getMessage());
         }
-
         return persistedCount;
     }
 
@@ -225,6 +352,24 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
 
     enum EntityType {
         P1_H, P2_QH, F5_CCH
+    }
+
+    /** Business key de una medida para casar contra lo existente en el upsert. */
+    private record BusinessKey(Integer clienteId, LocalDateTime fecha) {
+    }
+
+    /** Estado existente de una medida: su id (para UPDATE in-place) y su hash (para decidir). */
+    private record ExistingMeasure(Long id, byte[] payloadHash) {
+    }
+
+    /** Mapas de existentes por tipo, indexados por business key. */
+    private record ExistingMeasures(
+            Map<BusinessKey, ExistingMeasure> h,
+            Map<BusinessKey, ExistingMeasure> qh
+    ) {
+        boolean isEmpty() {
+            return h.isEmpty() && qh.isEmpty();
+        }
     }
 
     /**
@@ -255,31 +400,76 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
         }
     }
 
-    private ClienteResolution resolveClient(String cups, Map<String, ClienteResolution> clientCache) {
+    private ClienteResolution resolveClient(String cups, Map<String, ClienteResolution> clientsByPrefix) {
         if (cups == null || cups.isBlank()) {
             return ClienteResolution.error("No se puede resolver el cliente porque el CUPS está vacío");
         }
 
         String normalizedCups = cups.trim();
+        String prefix = cupsPrefix(normalizedCups);
+        ClienteResolution resolution = prefix == null ? null : clientsByPrefix.get(prefix);
 
-        return clientCache.computeIfAbsent(normalizedCups, key -> {
-            List<ClienteRepository.ClienteLookupView> matches = clienteRepository.findLookupByCups(
-                    key,
-                    PageRequest.of(0, 2)
-            );
+        return resolution != null
+                ? resolution
+                : ClienteResolution.error("No se encontró cliente para CUPS " + normalizedCups);
+    }
+
+    /**
+     * Pre-resuelve, en UNA sola consulta, todos los clientes referenciados por el archivo.
+     * Reemplaza el patrón N+1 (un SELECT por CUPS distinto). El mapa resultante se indexa
+     * por el prefijo de 20 caracteres del CUPS.
+     */
+    private Map<String, ClienteResolution> resolveClientsByPrefix(List<MeasureRecord> records) {
+        Set<String> prefixes = new HashSet<>();
+        for (MeasureRecord record : records) {
+            String cups = record.cups();
+            if (cups != null && !cups.isBlank()) {
+                String prefix = cupsPrefix(cups.trim());
+                if (prefix != null) {
+                    prefixes.add(prefix);
+                }
+            }
+        }
+        if (prefixes.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<String, List<ClienteRepository.ClientePrefixView>> matchesByPrefix = new HashMap<>();
+        for (ClienteRepository.ClientePrefixView view : clienteRepository.findLookupByCupsPrefixes(prefixes)) {
+            matchesByPrefix.computeIfAbsent(view.getCupsPrefix(), key -> new ArrayList<>()).add(view);
+        }
+
+        Map<String, ClienteResolution> resolutions = new HashMap<>();
+        for (String prefix : prefixes) {
+            List<ClienteRepository.ClientePrefixView> matches = matchesByPrefix.getOrDefault(prefix, List.of());
             if (matches.isEmpty()) {
-                return ClienteResolution.error("No se encontró cliente para CUPS " + key);
+                continue; // sin coincidencia -> resolveClient devolverá "no encontrado"
             }
             if (matches.size() > 1) {
-                return ClienteResolution.error("Se encontró más de un cliente para CUPS " + key);
+                resolutions.put(prefix, ClienteResolution.error("Se encontró más de un cliente para CUPS " + prefix));
+                continue;
             }
-
-            ClienteRepository.ClienteLookupView client = matches.get(0);
+            ClienteRepository.ClientePrefixView client = matches.get(0);
             if (client.getId() == null) {
-                return ClienteResolution.error("El cliente para CUPS " + key + " no tiene id_cliente");
+                resolutions.put(prefix, ClienteResolution.error("El cliente para CUPS " + prefix + " no tiene id_cliente"));
+                continue;
             }
-            return ClienteResolution.success(client.getId(), client.getTarifa());
-        });
+            resolutions.put(prefix, ClienteResolution.success(client.getId(), client.getTarifa()));
+        }
+        return resolutions;
+    }
+
+    /** Prefijo de 20 caracteres del CUPS usado para casar contra cliente.cups; null si es más corto. */
+    private static String cupsPrefix(String cups) {
+        return cups.length() >= CUPS_PREFIX_LENGTH ? cups.substring(0, CUPS_PREFIX_LENGTH) : null;
+    }
+
+    /**
+     * Redondea hacia arriba al entero siguiente (techo). Especificación del cliente para
+     * las magnitudes horarias: cualquier parte decimal sube (7.001 -> 8, 7.999 -> 8).
+     */
+    private static long ceilToLong(double value) {
+        return (long) Math.ceil(value);
     }
 
     private MedidaH toMedidaH(
@@ -291,26 +481,29 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
                 .clienteId(clientId)
                 .tipoMedida(measure.tipoMedida())
                 .fecha(measure.timestamp())
+                // Magnitudes de energía: techo (Math.ceil) por especificación del cliente
+                // (cualquier decimal sube al entero siguiente: 7.001 y 7.999 -> 8).
+                // Las columnas q* y banderaInvVer son códigos enteros: cast directo.
                 .banderaInvVer((int) measure.banderaInvVer())
-                .actent((long) measure.actent())
+                .actent(ceilToLong(measure.actent()))
                 .qactent((long) measure.qactent())
-                .actsal((long) measure.actsal())
+                .actsal(ceilToLong(measure.actsal()))
                 .qactsal((long) measure.qactsal())
-                .rq1((long) measure.rQ1())
+                .rq1(ceilToLong(measure.rQ1()))
                 .qrq1((long) measure.qrQ1())
-                .rq2((long) measure.rQ2())
+                .rq2(ceilToLong(measure.rQ2()))
                 .qrq2((long) measure.qrQ2())
-                .rq3((long) measure.rQ3())
+                .rq3(ceilToLong(measure.rQ3()))
                 .qrq3((long) measure.qrQ3())
-                .rq4((long) measure.rQ4())
+                .rq4(ceilToLong(measure.rQ4()))
                 .qrq4((long) measure.qrQ4())
-                .medres1((long) measure.medres1())
+                .medres1(ceilToLong(measure.medres1()))
                 .qmedres1((long) measure.qmedres1())
-                .medres2((long) measure.medres2())
+                .medres2(ceilToLong(measure.medres2()))
                 .qmedres2((long) measure.qmedres2())
                 .metodObt(measure.metodObt())
                 .fileRecordId(command.fileRecordId())
-                .payloadHash(sha256Hex(measure.rawLine()))
+                .payloadHash(computePayloadHash(measure.rawLine()))
                 .payloadHashVersion(DEFAULT_PAYLOAD_HASH_VERSION)
                 .build();
     }
@@ -343,26 +536,25 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
                 .qmedres2((long) measure.qmedres2())
                 .metodObt(measure.metodObt())
                 .fileRecordId(command.fileRecordId())
-                .payloadHash(sha256Hex(measure.rawLine()))
+                .payloadHash(computePayloadHash(measure.rawLine()))
                 .payloadHashVersion(DEFAULT_PAYLOAD_HASH_VERSION)
                 .build();
     }
 
     /**
-     * Calcula el SHA-256 (64 caracteres hex) de la línea cruda del registro.
-     * Sirve como payload_hash provisional para cumplir el contrato de versionado.
+     * Calcula el payload_hash: SHA-256 de la línea cruda truncado a los primeros
+     * {@link #PAYLOAD_HASH_BYTES} bytes (BINARY(8) en BD).
+     *
+     * <p>Es un hash de change-detection, NO de seguridad: solo se compara 1-vs-1
+     * contra el hash de la fila existente con la misma business key (id_cliente,
+     * fecha) para decidir omitir o reemplazar. 64 bits son de sobra para ese uso.
      */
-    private String sha256Hex(String rawLine) {
+    private byte[] computePayloadHash(String rawLine) {
         String input = rawLine != null ? rawLine : "";
         try {
             byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
                     .digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder(digest.length * 2);
-            for (byte b : digest) {
-                hex.append(Character.forDigit((b >> 4) & 0xF, 16));
-                hex.append(Character.forDigit(b & 0xF, 16));
-            }
-            return hex.toString();
+            return java.util.Arrays.copyOf(digest, PAYLOAD_HASH_BYTES);
         } catch (java.security.NoSuchAlgorithmException e) {
             // SHA-256 siempre está disponible en la JVM; no debería ocurrir.
             throw new IllegalStateException("SHA-256 no disponible", e);
@@ -394,6 +586,3 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
         }
     }
 }
-
-
-

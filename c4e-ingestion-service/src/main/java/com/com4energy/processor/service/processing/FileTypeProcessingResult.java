@@ -101,6 +101,19 @@ public record FileTypeProcessingResult(
                     metadataJson
             );
         }
+
+        /** Archivo rechazado durante el procesamiento (p.ej. revisión superseded). El payload se
+         *  arma desde el FileRecord (failureReason/comment ya seteados). */
+        public static DeferredOutboxEvent fileRejected() {
+            return new DeferredOutboxEvent(
+                    OutboxEventType.FILE_REJECTED,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+            );
+        }
     }
 }
 
