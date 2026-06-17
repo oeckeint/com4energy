@@ -28,7 +28,9 @@ public abstract class AbstractMeasure extends RevisionControlled {
     @Column(name = "bandera_inv_ver", nullable = false)
     protected Integer banderaInvVer;
 
-    // Campos INT UNSIGNED en BD -> usar Long para evitar overflow (UNSIGNED max = 4,294,967,295)
+    // Magnitudes y códigos de calidad: en BD son SMALLINT UNSIGNED (tope 65535; valores reales < 1k,
+    // zona segura ~10k). El tipo Java se mantiene en Long (ddl-auto=none -> sin validación de esquema;
+    // el ensanchado al leer es trivial y un valor fuera de rango cae a cuarentena por strict mode).
     @Column(name = "actent", nullable = false)
     protected Long actent;
 
