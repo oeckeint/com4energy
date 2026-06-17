@@ -9,7 +9,6 @@ import com.com4energy.persistence.filerecord.enums.QualityStatus;
 import com.com4energy.processor.outbox.domain.OutboxEventType;
 import com.com4energy.processor.service.measure.MeasureFileParserService;
 import com.com4energy.processor.service.measure.MeasureFilenameMetadata;
-import com.com4energy.processor.service.measure.MeasureRevisionGuard;
 import com.com4energy.processor.service.measure.MeasureParseResult;
 import com.com4energy.processor.service.measure.MeasureRecord;
 import com.com4energy.processor.service.measure.persistence.MeasurePersistenceContracts;
@@ -32,23 +31,22 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class MeasureFileTypeProcessorTest {
 
     @Test
-    void processRejectsWhenRevisionIsSuperseded() throws Exception {
+    void processMarksSupersededWhenAllRowsAreStale() throws Exception {
+        // Precedencia POR FILA: un archivo de revisión inferior NO se rechaza; se procesa y, si todas
+        // sus filas resultan obsoletas (ya existe revisión >=), queda como no-op SUPERSEDED (0 escrituras).
         MeasureFileParserService parserService = mock(MeasureFileParserService.class);
         MeasurePersistenceContracts.MeasurePersistencePort persistencePort =
                 mock(MeasurePersistenceContracts.MeasurePersistencePort.class);
         MeasureRecordValidationChain validationChain = mock(MeasureRecordValidationChain.class);
         MeasureDefectReportService defectReportService = mock(MeasureDefectReportService.class);
-        MeasureRevisionGuard revisionGuard = mock(MeasureRevisionGuard.class);
-        when(revisionGuard.isSupersededByApplied(any())).thenReturn(true);
 
         MeasureFileTypeProcessor processor = new MeasureFileTypeProcessor(
-                parserService, persistencePort, validationChain, defectReportService, revisionGuard);
+                parserService, persistencePort, validationChain, defectReportService);
 
         FileRecord fileRecord = FileRecord.builder()
                 .id(10L)
@@ -57,12 +55,20 @@ class MeasureFileTypeProcessorTest {
                 .measureVersion(new MeasureFileVersion("P1D_0021_0894_20240104", 0, 0))
                 .build();
 
-        FileTypeProcessingResult result = processor.process(fileRecord, Path.of("ignored"));
+        when(parserService.parse(any(Path.class), eq(FileType.MEDIDA_H_P1))).thenReturn(validParseResult());
+        when(validationChain.validate(any(List.class), eq(ValidationMode.TOLERANT)))
+                .thenReturn(new MeasureRecordValidationResult(List.of(hourlyRecord()), List.of()));
+        // persisted=0, updated=0, skippedIdentical=0, skippedStale=1 -> todo obsoleto.
+        when(persistencePort.persist(any(MeasurePersistenceContracts.PersistMeasuresCommand.class)))
+                .thenReturn(new MeasurePersistenceContracts.MeasurePersistenceResult(
+                        0, 0, 0, 1, 0, List.of(), List.of(), null));
 
-        assertEquals(FileTypeProcessingResult.Status.REJECTED, result.status());
-        assertEquals(FailureReason.SUPERSEDED_REVISION, result.failureReason());
-        verifyNoInteractions(persistencePort);
-        verify(parserService, never()).parse(any(Path.class), any());
+        FileTypeProcessingResult result = processor.process(fileRecord, Path.of("/tmp/P1D_0021_0894_20240104.0"));
+
+        assertEquals(FileTypeProcessingResult.Status.SUCCEEDED, result.status());
+        assertEquals(BusinessResult.SUPERSEDED, fileRecord.getBusinessResult());
+        assertEquals(QualityStatus.CLEAN, fileRecord.getQualityStatus());
+        verify(persistencePort).persist(any(MeasurePersistenceContracts.PersistMeasuresCommand.class));
     }
 
     @Test
@@ -72,8 +78,7 @@ class MeasureFileTypeProcessorTest {
         MeasureRecordValidationChain validationChain = mock(MeasureRecordValidationChain.class);
         MeasureDefectReportService defectReportService = mock(MeasureDefectReportService.class);
         MeasureFileTypeProcessor processor = new MeasureFileTypeProcessor(
-                parserService, persistencePort, validationChain, defectReportService,
-                mock(MeasureRevisionGuard.class));
+                parserService, persistencePort, validationChain, defectReportService);
 
         FileRecord fileRecord = FileRecord.builder()
                 .id(10L)
@@ -117,8 +122,7 @@ class MeasureFileTypeProcessorTest {
         MeasureRecordValidationChain validationChain = mock(MeasureRecordValidationChain.class);
         MeasureDefectReportService defectReportService = mock(MeasureDefectReportService.class);
         MeasureFileTypeProcessor processor = new MeasureFileTypeProcessor(
-                parserService, persistencePort, validationChain, defectReportService,
-                mock(MeasureRevisionGuard.class));
+                parserService, persistencePort, validationChain, defectReportService);
 
         FileRecord fileRecord = FileRecord.builder()
                 .id(11L)
@@ -159,8 +163,7 @@ class MeasureFileTypeProcessorTest {
         MeasureRecordValidationChain validationChain = mock(MeasureRecordValidationChain.class);
         MeasureDefectReportService defectReportService = mock(MeasureDefectReportService.class);
         MeasureFileTypeProcessor processor = new MeasureFileTypeProcessor(
-                parserService, persistencePort, validationChain, defectReportService,
-                mock(MeasureRevisionGuard.class));
+                parserService, persistencePort, validationChain, defectReportService);
 
         FileRecord fileRecord = FileRecord.builder()
                 .id(55L)
@@ -196,8 +199,7 @@ class MeasureFileTypeProcessorTest {
         MeasureRecordValidationChain validationChain = mock(MeasureRecordValidationChain.class);
         MeasureDefectReportService defectReportService = mock(MeasureDefectReportService.class);
         MeasureFileTypeProcessor processor = new MeasureFileTypeProcessor(
-                parserService, persistencePort, validationChain, defectReportService,
-                mock(MeasureRevisionGuard.class));
+                parserService, persistencePort, validationChain, defectReportService);
 
         FileRecord fileRecord = FileRecord.builder()
                 .id(77L)
@@ -232,8 +234,7 @@ class MeasureFileTypeProcessorTest {
         MeasureRecordValidationChain validationChain = mock(MeasureRecordValidationChain.class);
         MeasureDefectReportService defectReportService = mock(MeasureDefectReportService.class);
         MeasureFileTypeProcessor processor = new MeasureFileTypeProcessor(
-                parserService, persistencePort, validationChain, defectReportService,
-                mock(MeasureRevisionGuard.class));
+                parserService, persistencePort, validationChain, defectReportService);
 
         FileRecord fileRecord = FileRecord.builder()
                 .id(99L)

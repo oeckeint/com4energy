@@ -130,19 +130,41 @@ class JpaMeasurePersistenceAdapterTest {
     }
 
     @Test
-    void persistRejectsCrossFamilyOnFirstFamilyLoad() {
+    void persistRejectsCrossFamilyCollision() {
         MeasureRecord.Hourly record = hourly(cups(1));
         when(clienteRepository.findLookupByCupsPrefixes(any())).thenReturn(List.of(prefixView(prefixOf(1), 1, "2.0A")));
-        // Hay (cliente, fecha) existentes pero la familia NO tiene previo aplicado -> cross-familia.
+        // La (cliente, fecha) ya existe pero pertenece a OTRA familia -> cross-familia.
         when(medidaHRepository.findExistingByClienteIdsAndFechas(any(), any()))
-                .thenReturn(List.of(existingView(1, record.timestamp(), new byte[]{1, 2, 3, 4, 5, 6, 7, 8}, 555L)));
+                .thenReturn(List.of(existingView(1, record.timestamp(), new byte[]{1, 2, 3, 4, 5, 6, 7, 8}, 555L,
+                        "P1D_OTHER_FAMILY", 0, 0)));
 
         var result = adapter.persist(new MeasurePersistenceContracts.PersistMeasuresCommand(
-                1L, "f", List.of(record), false)); // familyHasPriorApplied=false
+                1L, "f", List.of(record), "P1D_THIS_FAMILY", 0, 0));
 
         assertTrue(result.crossFamilyCollision());
         assertEquals(0, result.persistedCount());
         assertEquals(0, result.updatedCount());
+        verify(measureBatchWriter, never()).insertBatch(any(), anyList());
+        verify(measureBatchWriter, never()).updateBatch(any(), anyList());
+    }
+
+    @Test
+    void persistSkipsStaleWhenExistingRevisionIsNewer() {
+        MeasureRecord.Hourly record = hourly(cups(1));
+        when(clienteRepository.findLookupByCupsPrefixes(any())).thenReturn(List.of(prefixView(prefixOf(1), 1, "2.0A")));
+        // Misma familia, misma (cliente, fecha), pero la fila existente proviene de una revisión MAYOR
+        // (1 > 0) -> el entrante es obsoleto -> SKIP_STALE (no se pisa el dato más nuevo).
+        when(medidaHRepository.findExistingByClienteIdsAndFechas(any(), any()))
+                .thenReturn(List.of(existingView(1, record.timestamp(), new byte[]{9, 9, 9, 9, 9, 9, 9, 9}, 555L,
+                        "FAM", 1, 0)));
+
+        var result = adapter.persist(new MeasurePersistenceContracts.PersistMeasuresCommand(
+                1L, "f", List.of(record), "FAM", 0, 0));
+
+        assertEquals(0, result.persistedCount());
+        assertEquals(0, result.updatedCount());
+        assertEquals(1, result.skippedStaleCount());
+        assertEquals(0, result.skippedIdenticalCount());
         verify(measureBatchWriter, never()).insertBatch(any(), anyList());
         verify(measureBatchWriter, never()).updateBatch(any(), anyList());
     }
@@ -279,6 +301,12 @@ class JpaMeasurePersistenceAdapterTest {
     }
 
     private ExistingMeasureView existingView(Integer clienteId, LocalDateTime fecha, byte[] payloadHash, Long id) {
+        return existingView(clienteId, fecha, payloadHash, id, "fam-default", 0, 0);
+    }
+
+    private ExistingMeasureView existingView(
+            Integer clienteId, LocalDateTime fecha, byte[] payloadHash, Long id,
+            String family, Integer revision, Integer iteration) {
         return new ExistingMeasureView() {
             @Override
             public Integer getClienteId() {
@@ -298,6 +326,21 @@ class JpaMeasurePersistenceAdapterTest {
             @Override
             public Long getId() {
                 return id;
+            }
+
+            @Override
+            public String getSourceFamilyKey() {
+                return family;
+            }
+
+            @Override
+            public Integer getRevision() {
+                return revision;
+            }
+
+            @Override
+            public Integer getProcessingIteration() {
+                return iteration;
             }
         };
     }

@@ -14,8 +14,10 @@ cubiertos y el comportamiento esperado en producción.
 - **No se pierden datos buenos por una fila mala**: tres capas tolerantes (parseo, validación, BD)
   aíslan y reportan la fila problemática y **persisten el resto** (`PARTIAL_SUCCEEDED`), con commit
   parcial real. Cada defecto queda trazado en su reporte (`.jsonl`) y su evento al outbox.
-- **Integridad temporal**: el control de revisión/iteración garantiza que **un archivo viejo nunca
-  pisa datos más nuevos**; las correcciones se aplican in-place conservando el `id` de la medida.
+- **Integridad temporal e independencia del orden**: la precedencia revisión/iteración se resuelve
+  **por fila**, así que los archivos se pueden procesar en **cualquier orden** y un archivo viejo
+  (incluso si llega tarde) **nunca pisa datos más nuevos**; las correcciones se aplican in-place
+  conservando el `id` de la medida. Un archivo totalmente obsoleto queda como `SUPERSEDED` (no-op).
 - **Protección entre familias**: si un archivo intentara escribir sobre `(cliente, fecha)` de otra
   familia, se rechaza **antes de tocar la BD** (cero escrituras, BD intacta).
 - **Observabilidad**: cada archivo emite una línea de evento que **reconcilia el total** del archivo
@@ -32,6 +34,10 @@ cubiertos y el comportamiento esperado en producción.
   Ej. `P1D_0031_0894_20260502.3` y `P1D_0031_0894_20260502.3.1` son la misma familia.
 - **Revisión / iteración**: las extensiones numéricas del archivo (`.{revision}` y `.{revision}.{iteration}`).
   Gana siempre la `(revisión, iteración)` **más alta**. Una nueva revisión reinicia la iteración.
+  La precedencia se resuelve **POR FILA** (no rechazando el archivo): cada `(cliente, fecha)` conserva
+  el dato de la revisión/iteración más alta vista. Por eso los archivos pueden procesarse en
+  **cualquier orden** y un archivo viejo que llega tarde **no pisa** datos más nuevos (sus filas
+  obsoletas se omiten; sus filas únicas sí se insertan).
 - **Clave de negocio**: `(id_cliente, fecha)`. Identifica unívocamente una medida.
 - **Detección de cambios (`payload_hash`)**: por cada medida se guarda un hash de su contenido.
   Al reprocesar, si el hash no cambió → se **omite** (no se reescribe); si cambió → se **actualiza
@@ -57,8 +63,9 @@ El cliente manda el archivo corregido completo; el sistema aplica únicamente lo
 En orden, un archivo se rechaza en la subida si:
 1. **Nombre duplicado** → `DUPLICATED_ORIGINAL_FILENAME`.
 2. **Contenido duplicado** (mismo hash de archivo, aunque cambie el nombre) → `DUPLICATED_CONTENT`.
-3. **Revisión superada** (no es estrictamente más nueva que lo ya aplicado de su familia) →
-   `SUPERSEDED_REVISION`.
+
+> Nota: ya **no** se rechaza por "revisión superada" a nivel archivo. Una revisión inferior se procesa
+> y la precedencia se resuelve por fila (sus filas obsoletas se omiten como `skipped-obsoleto`).
 
 ## Escenarios validados (BD real, dev)
 
@@ -71,16 +78,20 @@ En orden, un archivo se rechaza en la subida si:
 | 5 | `.3.2` cambiando la **fecha** de una línea (2026→2027) | `persisted=1, updated=1, skipped=140,951` | La línea movida a 2027 = clave nueva → **INSERT**; la fecha vieja vuelve a su valor original → **UPDATE**. `COUNT(*)` sube en 1. Editar la identidad (cliente/fecha) crea fila nueva y deja la vieja. |
 | 6 | Subir a **revisión `.4`** teniendo aplicado hasta `(3,3)` | Aceptado; `file_records`: `revision=4, processing_iteration=0`. Upsert: `persisted=1, skipped=140,952` | **La revisión mayor gana aunque su iteración (0) sea menor que la última (3)**: la revisión domina sobre la iteración, y la iteración se reinicia a 0 con la nueva revisión. |
 | 7 | `.4.1` (bump de iteración dentro de la misma revisión) | Aceptado; `file_records`: `revision=4, processing_iteration=1`. Upsert aplica los cambios. | Iteración mayor dentro de la misma revisión gana. |
-| 8 | `.4.3` teniendo aplicado `(4,4)` | **Rechazado**: `SUPERSEDED_REVISION` → carpeta `/rejected`, BD intacta. Evento `FILE_REJECTED` en `file_records_events` con razón y detalle. | Revisión/iteración **menor** que lo aplicado no pisa datos nuevos. Detectado en la validación de upload (`CHAIN_VALIDATION`). |
+| 8 | `.4.3` teniendo aplicado `(4,4)` | **Procesado, sin escrituras netas**: cada `(cliente,fecha)` ya existe de `(4,4)` ≥ `(4,3)` → todo `skipped-obsoleto`; `business_result=SUPERSEDED`, BD intacta. | Revisión/iteración **menor** ya no se rechaza: se procesa y la precedencia por fila omite lo obsoleto sin pisar datos nuevos. **(comportamiento nuevo, pendiente de re-validar E2E)** |
 
 | 9 | `.6` con **1 fila válida modificada + 1 fila con `actent` fuera de rango** (`INT UNSIGNED`) | `updated=1, defects=1, skipped=140,951`; `PARTIAL_SUCCEEDED`, va a `/processed`. La fila mala se aísla a `.sge_quarantine.jsonl` + evento `FILE_PERSISTENCE_QUARANTINE`. | **Commit parcial real validado**: en el mismo lote que falló, la fila buena se guardó y la mala se aisló (binary-split + `REQUIRES_NEW`). Es la pieza que ningún test unitario podía cubrir. |
 | 10 | `.7` con **1 fila ingarseable (`actent=abc`) + 1 fila `actent` fuera de rango + 1 cambio válido** | `updated=1, defects=2, skipped=140,950`; `PARTIAL_SUCCEEDED`. La de `abc` → `.sge_defect.jsonl` (`phase=parse`), la de overflow → `.sge_quarantine.jsonl`. | **Parseo tolerante validado** + las 3 capas conviviendo: una fila mala (de cualquier tipo) ya no tumba el archivo; se persiste el resto. |
 | 11 | **Alta inicial (BD fresca)** del `.3` con **1 fila ingarseable (`abc`) + 1 fila `actent` fuera de rango** al final | `total=140,954, persisted=140,952, updated=0, skipped=0, parseDefects=1, quarantined=1`; `PARTIAL_SUCCEEDED`. ~8.3s. | **Binary-split en el camino INSERT validado**: las 140,952 buenas insertan, la de overflow se aísla a cuarentena (búsqueda binaria converge a 1 fila) y la de `abc` a `.sge_defect.jsonl`. Destapó y validó el fix del bug de reintento (`StaleObjectStateException` por reuso de instancias con id ya asignado). |
 | 12 | **Colisión cross-familia**: archivo de OTRA familia (`...20260503`, sin previo aplicado) con `(cliente,fecha)` ya cargadas por la familia `...20260502` | **Rechazado**: `CROSS_FAMILY_COLLISION` → `/rejected`, **BD intacta** (0 escrituras), evento `FILE_REJECTED`. ~88ms. | **Pre-check antes de escribir validado**: el prefetch detecta `(cliente,fecha)` existentes + familia sin previo aplicado → rechaza sin tocar la BD (sin binary-split ni cuarentena). `uk_business` es global; esto protege contra que una familia pise datos de otra. |
 
-## Escenarios pendientes de validar
+## Escenarios pendientes de validar (precedencia por fila — comportamiento nuevo)
 
-Ninguno: los 12 escenarios están validados contra BD real (dev, MySQL strict mode).
+| # | Entrada | Resultado esperado |
+|---|---|---|
+| 13 | En un mismo lote, `.0` y `.1` de la misma familia procesados en **orden inverso** (`.1` antes que `.0`) | Estado final idéntico al orden natural: las `(cliente,fecha)` de `.1` ganan; las únicas de `.0` se insertan. Independiente del orden. |
+| 14 | Rezagado: llega `.0` cuando `.1` ya está aplicado | Sin pérdida: filas que chocan con `.1` → `skipped-obsoleto`; filas únicas de `.0` → INSERT. BD nunca pierde datos. |
+| 15 | Archivo totalmente obsoleto (todas las filas ya existen de revisión ≥) | `business_result=SUPERSEDED`, `quality_status=CLEAN`, 0 escrituras netas. |
 
 ## Línea de evento por archivo (`measure_file_processed`)
 
@@ -89,13 +100,16 @@ archivo (las que parsearon OK + las que fallaron al parsear). Los defectos se de
 modo que **una sola invariante reconcilia el archivo completo**:
 
 ```
-total = persisted + updated + skipped + parseDefects + validationDefects + quarantined
+total = persisted + updated + skippedIdentical + skippedStale + parseDefects + validationDefects + quarantined
 ```
 
 | Campo | Significado |
 |---|---|
 | `total` | Filas de medida en el archivo (parsearon OK + fallaron al parsear) |
-| `persisted` / `updated` / `skipped` | Insertadas / corregidas in-place / omitidas por hash idéntico |
+| `persisted` / `updated` | Insertadas / corregidas in-place |
+| `skippedIdentical` | Omitidas porque el contenido era idéntico (mismo `payload_hash`) |
+| `skippedStale` | Omitidas porque ya existía una revisión/iteración igual o más reciente (obsoletas) |
+| `skipped` | Total de omitidas (`skippedIdentical + skippedStale`) |
 | `parseDefects` | Líneas que no se pudieron parsear → `.sge_defect.jsonl` (`phase=parse`) |
 | `validationDefects` | Parsearon pero fallaron validación de negocio (CUPS, rangos…) → `.sge_defect.jsonl` (`phase=validation`) |
 | `quarantined` | Parsearon y validaron OK pero rompieron una constraint de BD → `.sge_quarantine.jsonl` |

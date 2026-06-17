@@ -15,12 +15,16 @@ public interface MedidaHRepository extends BaseMedidaHRepository {
     /**
      * Pre-carga del upsert: medidas existentes cuya business key (clienteId, fecha) cae en los
      * conjuntos dados. La decisión exacta por par se hace en memoria. Usa uk_medida_h_business
-     * (líder id_cliente) + partition pruning por fecha.
+     * (líder id_cliente) + partition pruning por fecha. El join con file_records (por PK) trae la
+     * procedencia (familia, revisión, iteración) para resolver la precedencia POR FILA.
      */
     @Query("""
-            select m.clienteId as clienteId, m.fecha as fecha, m.payloadHash as payloadHash, m.id as id
-            from MedidaH m
-            where m.clienteId in :clienteIds and m.fecha in :fechas
+            select m.clienteId as clienteId, m.fecha as fecha, m.payloadHash as payloadHash, m.id as id,
+                   fr.measureVersion.sourceFamilyKey as sourceFamilyKey,
+                   fr.measureVersion.revision as revision,
+                   fr.measureVersion.processingIteration as processingIteration
+            from MedidaH m, FileRecord fr
+            where fr.id = m.fileRecordId and m.clienteId in :clienteIds and m.fecha in :fechas
             """)
     List<ExistingMeasureView> findExistingByClienteIdsAndFechas(
             @Param("clienteIds") Collection<Integer> clienteIds,
