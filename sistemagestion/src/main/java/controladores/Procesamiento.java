@@ -167,7 +167,13 @@ public class Procesamiento {
                         this.procesarXML(f, nombreArchivo);
                         break;
                     case MEDIDAS:
-                        this.procesarMedidas(f, nombreArchivo);
+                        // Carga de medidas DESHABILITADA en sistemagestion: la ingesta de medidas
+                        // (P1/P2/F5/CCH) la realiza ahora c4e-ingestion-service. Se cierra esta vía
+                        // para evitar una segunda ruta de ingesta (potencial punto de fallo / doble
+                        // escritura). Para reactivar: restaurar `this.procesarMedidas(f, nombreArchivo);`.
+                        this.archivosErroneos.add("El archivo <Strong>" + nombreArchivo + "</Strong> no se procesó: "
+                                + "la carga de medidas está deshabilitada en este sistema; ahora la realiza el servicio de ingesta.");
+                        ArchivoTexto.escribirError(this.archivosErroneos.get(this.archivosErroneos.size() - 1));
                         break;
                     default:
                         throw new ExtensionArchivoNoReconocida();
