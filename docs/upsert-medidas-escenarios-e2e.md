@@ -42,8 +42,11 @@ cubiertos y el comportamiento esperado en producción.
 - **Detección de cambios (`payload_hash`)**: por cada medida se guarda un hash de su contenido.
   Al reprocesar, si el hash no cambió → se **omite** (no se reescribe); si cambió → se **actualiza
   en su lugar** (mismo registro).
-- **Redondeo (techo)**: las magnitudes horarias (P1) con decimales se guardan redondeadas hacia
-  arriba al entero siguiente (`7.001 → 8`, `7.999 → 8`), por especificación del cliente.
+- **Redondeo (HALF_EVEN / bancario)**: las magnitudes horarias (P1) con decimales se guardan
+  redondeadas al entero más cercano; el empate exacto `.5` va al entero **par** (`7.001 → 7`,
+  `7.499 → 7`, `7.999 → 8`; empates: `0.5 → 0`, `7.5 → 8`, `8.5 → 8`). Se eligió HALF_EVEN porque
+  estos valores se **suman** para decisiones de compra de energía y así el agregado no acumula sesgo
+  (HALF_UP siempre subiría el `.5`). La política está centralizada en una constante (`MAGNITUDE_ROUNDING`).
 
 ## Archivo mixto: correcciones + altas + sin cambios, en una sola pasada
 
@@ -71,7 +74,7 @@ En orden, un archivo se rechaza en la subida si:
 
 | # | Entrada | Resultado | Notas |
 |---|---|---|---|
-| 1 | Carga inicial `.3` (BD fresca, 140,952 filas) | `persisted=140,952, updated=0, skipped=0` | Todo INSERT. Techo aplicado (`7.957 → 8`), `payload_hash` BINARY(8). ~8.2s. |
+| 1 | Carga inicial `.3` (BD fresca, 140,952 filas) | `persisted=140,952, updated=0, skipped=0` | Todo INSERT. Redondeo HALF_EVEN (`7.957 → 8`), `payload_hash` BINARY(8). ~8.2s. |
 | 2 | Reprocesar el mismo `.3` (mismo nombre y contenido) | Rechazado en subida: `DUPLICATED_ORIGINAL_FILENAME` | No llega a procesarse. |
 | 3 | `.3.1` con **mismo contenido**, nombre nuevo | Rechazado en subida: `DUPLICATED_CONTENT` | El hash del archivo es idéntico → no hay nada que procesar. |
 | 4 | `.3.1` con **1 valor modificado** en una `(cliente,fecha)` existente | `persisted=0, updated=1, skipped=140,951` | UPDATE in-place (mismo `id_medida_h`). 140,951 omitidas → **~2s** (vs 8s). `COUNT(*)` no cambia. |

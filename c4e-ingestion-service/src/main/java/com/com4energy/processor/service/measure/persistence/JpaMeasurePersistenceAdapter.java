@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,6 +36,11 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
     private static final int PAYLOAD_HASH_BYTES = 8;
     // Longitud del prefijo de CUPS contra el que se casa cliente.cups.
     private static final int CUPS_PREFIX_LENGTH = 20;
+    // Política de redondeo de las magnitudes horarias (P1) al entero de almacenamiento.
+    // HALF_EVEN (bancario): el empate .5 va al entero PAR, de modo que el sesgo se cancela en los
+    // agregados (estos valores se SUMAN para decisiones de compra de energía). Cambiar SOLO esta
+    // constante ajusta toda la política (p.ej. HALF_UP) sin tocar nada más.
+    private static final RoundingMode MAGNITUDE_ROUNDING = RoundingMode.HALF_EVEN;
 
     private final MedidaHRepository medidaHRepository;
     private final MedidaQHRepository medidaQHRepository;
@@ -549,11 +556,16 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
     }
 
     /**
-     * Redondea hacia arriba al entero siguiente (techo). Especificación del cliente para
-     * las magnitudes horarias: cualquier parte decimal sube (7.001 -> 8, 7.999 -> 8).
+     * Redondea una magnitud horaria (P1) al entero más cercano con la política {@link #MAGNITUDE_ROUNDING}
+     * (HALF_EVEN). Ejemplos: 7.001 -> 7, 7.499 -> 7, 7.999 -> 8; en el empate exacto va al PAR:
+     * 0.5 -> 0, 7.5 -> 8, 8.5 -> 8.
+     *
+     * <p>Se redondea vía {@code BigDecimal.valueOf(double)} (usa la representación decimal corta del
+     * double) para que el borde .5 sea EXACTO a los decimales del archivo (≤3) — con {@code double}
+     * crudo un 7.5 podría ser 7.4999… y romper el empate.
      */
-    private static int ceilToInt(double value) {
-        return (int) Math.ceil(value);
+    private static int roundMagnitude(double value) {
+        return BigDecimal.valueOf(value).setScale(0, MAGNITUDE_ROUNDING).intValue();
     }
 
     private MedidaH toMedidaH(
@@ -565,25 +577,25 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
                 .clienteId(clientId)
                 .tipoMedida((short) measure.tipoMedida())
                 .fecha(measure.timestamp())
-                // Magnitudes de energía: techo (Math.ceil) por especificación del cliente
-                // (cualquier decimal sube al entero siguiente: 7.001 y 7.999 -> 8).
+                // Magnitudes de energía: redondeo al entero más cercano con HALF_EVEN (ver roundMagnitude),
+                // porque se suman para compra de energía y conviene un agregado insesgado.
                 // q* son códigos enteros: cast directo. banderaInvVer es booleano: 0 -> false, !=0 -> true.
                 .banderaInvVer(measure.banderaInvVer() != 0)
-                .actent(ceilToInt(measure.actent()))
+                .actent(roundMagnitude(measure.actent()))
                 .qactent((int) measure.qactent())
-                .actsal(ceilToInt(measure.actsal()))
+                .actsal(roundMagnitude(measure.actsal()))
                 .qactsal((int) measure.qactsal())
-                .rq1(ceilToInt(measure.rQ1()))
+                .rq1(roundMagnitude(measure.rQ1()))
                 .qrq1((int) measure.qrQ1())
-                .rq2(ceilToInt(measure.rQ2()))
+                .rq2(roundMagnitude(measure.rQ2()))
                 .qrq2((int) measure.qrQ2())
-                .rq3(ceilToInt(measure.rQ3()))
+                .rq3(roundMagnitude(measure.rQ3()))
                 .qrq3((int) measure.qrQ3())
-                .rq4(ceilToInt(measure.rQ4()))
+                .rq4(roundMagnitude(measure.rQ4()))
                 .qrq4((int) measure.qrQ4())
-                .medres1(ceilToInt(measure.medres1()))
+                .medres1(roundMagnitude(measure.medres1()))
                 .qmedres1((int) measure.qmedres1())
-                .medres2(ceilToInt(measure.medres2()))
+                .medres2(roundMagnitude(measure.medres2()))
                 .qmedres2((int) measure.qmedres2())
                 .metodObt((short) measure.metodObt())
                 .fileRecordId(command.fileRecordId())

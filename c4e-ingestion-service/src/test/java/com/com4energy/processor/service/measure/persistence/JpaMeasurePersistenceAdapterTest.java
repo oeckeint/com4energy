@@ -249,16 +249,18 @@ class JpaMeasurePersistenceAdapterTest {
     }
 
     @Test
-    void persistCeilsHourlyMagnitudesToNextInteger() {
+    void persistRoundsHourlyMagnitudesHalfEven() {
         when(clienteRepository.findLookupByCupsPrefixes(any())).thenReturn(List.of(prefixView(prefixOf(1), 1, "2.0A")));
         when(medidaHRepository.findExistingByClienteIdsAndFechas(any(), any())).thenReturn(List.of());
 
-        // actent=7.001, actsal=19.000, rQ1=7.999, rQ2=0.5, medres1=2.0; qactent=16 (código)
+        // No-empates: actent=7.001->7, actsal=19.000->19, medres2=7.999->8.
+        // Empates .5 -> entero PAR: rQ1=7.5->8, rQ2=0.5->0, rQ3=2.5->2, rQ4=3.5->4, medres1=2.0->2.
+        // qactent=16 es código (no se redondea).
         MeasureRecord.Hourly hourly = new MeasureRecord.Hourly(
                 cups(1), LocalDateTime.of(2025, 1, 1, 0, 0), 11,
                 1d,
-                7.001d, 16d, 19.000d, 0d, 7.999d, 0d, 0.5d, 0d, 0d, 0d, 0d, 0d,
-                2.0d, 0d, 0d, 0d,
+                7.001d, 16d, 19.000d, 0d, 7.5d, 0d, 0.5d, 0d, 2.5d, 0d, 3.5d, 0d,
+                2.0d, 0d, 7.999d, 0d,
                 1, 0, "P1D_0021_0894_20240104.0", "raw");
 
         adapter.persist(command(List.of(hourly)));
@@ -267,12 +269,15 @@ class JpaMeasurePersistenceAdapterTest {
         ArgumentCaptor<List<MedidaH>> captor = ArgumentCaptor.forClass((Class) List.class);
         verify(measureBatchWriter).insertBatch(eq(medidaHRepository), captor.capture());
         MedidaH entity = captor.getValue().get(0);
-        assertEquals(8L, entity.getActent().longValue(), "7.001 debe subir a 8");
-        assertEquals(19L, entity.getActsal().longValue(), "19.000 se queda en 19");
-        assertEquals(8L, entity.getRq1().longValue(), "7.999 debe subir a 8");
-        assertEquals(1L, entity.getRq2().longValue(), "0.5 debe subir a 1");
-        assertEquals(2L, entity.getMedres1().longValue(), "2.0 entero exacto se queda en 2");
-        assertEquals(16L, entity.getQactent().longValue(), "el código q* no se redondea hacia arriba");
+        assertEquals(7, entity.getActent().intValue(), "7.001 NO sube (< .5)");
+        assertEquals(19, entity.getActsal().intValue(), "19.000 se queda en 19");
+        assertEquals(8, entity.getRq1().intValue(), "empate 7.5 -> par 8");
+        assertEquals(0, entity.getRq2().intValue(), "empate 0.5 -> par 0");
+        assertEquals(2, entity.getRq3().intValue(), "empate 2.5 -> par 2");
+        assertEquals(4, entity.getRq4().intValue(), "empate 3.5 -> par 4");
+        assertEquals(2, entity.getMedres1().intValue(), "2.0 entero exacto se queda en 2");
+        assertEquals(8, entity.getMedres2().intValue(), "7.999 sube a 8");
+        assertEquals(16, entity.getQactent().intValue(), "el código q* no se redondea");
     }
 
     @Test
