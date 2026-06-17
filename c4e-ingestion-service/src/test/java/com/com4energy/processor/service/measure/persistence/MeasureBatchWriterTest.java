@@ -69,7 +69,7 @@ class MeasureBatchWriterTest {
                 .clienteId(7)
                 .fecha(LocalDateTime.of(2026, 4, 16, 1, 0))
                 .tipoMedida((short) 11)
-                .banderaInvVer((short) 1)
+                .banderaInvVer(true)
                 .actent(99)
                 .qactent(0).actsal(0).qactsal(0)
                 .rq1(0).qrq1(0).rq2(0).qrq2(0).rq3(0).qrq3(0).rq4(0).qrq4(0)

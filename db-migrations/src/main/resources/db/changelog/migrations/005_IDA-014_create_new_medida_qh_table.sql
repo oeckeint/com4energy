@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS medida_qh (
     id_cliente INT NOT NULL,
     tipo_medida TINYINT UNSIGNED NOT NULL COMMENT 'Clasificación técnica del archivo (valores < 100)',
     fecha DATETIME NOT NULL COMMENT 'Granularidad a segundos: las medidas caen siempre en minuto exacto',
-    bandera_inv_ver TINYINT UNSIGNED NOT NULL COMMENT 'Booleano (0/1)',
+    bandera_inv_ver BOOLEAN NOT NULL COMMENT 'Booleano (MySQL lo almacena como TINYINT(1): 0/1)',
     actent SMALLINT UNSIGNED NOT NULL COMMENT 'Magnitud (valores < 1k; zona segura ~10k, tope 65535)',
     qactent SMALLINT UNSIGNED NOT NULL COMMENT 'Código de calidad (valores < 1k)',
     actsal SMALLINT UNSIGNED NOT NULL COMMENT 'Magnitud (valores < 1k; zona segura ~10k, tope 65535)',

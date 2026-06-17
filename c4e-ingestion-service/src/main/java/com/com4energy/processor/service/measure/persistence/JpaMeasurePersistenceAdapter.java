@@ -567,8 +567,8 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
                 .fecha(measure.timestamp())
                 // Magnitudes de energía: techo (Math.ceil) por especificación del cliente
                 // (cualquier decimal sube al entero siguiente: 7.001 y 7.999 -> 8).
-                // Las columnas q* y banderaInvVer son códigos enteros: cast directo.
-                .banderaInvVer((short) measure.banderaInvVer())
+                // q* son códigos enteros: cast directo. banderaInvVer es booleano: 0 -> false, !=0 -> true.
+                .banderaInvVer(measure.banderaInvVer() != 0)
                 .actent(ceilToInt(measure.actent()))
                 .qactent((int) measure.qactent())
                 .actsal(ceilToInt(measure.actsal()))
@@ -601,7 +601,7 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
                 .clienteId(clientId)
                 .tipoMedida((short) measure.tipoMedida())
                 .fecha(measure.timestamp())
-                .banderaInvVer((short) measure.banderaInvVer())
+                .banderaInvVer(measure.banderaInvVer() != 0)
                 .actent(measure.actent())
                 .qactent(measure.qactent())
                 .actsal(measure.actsal())

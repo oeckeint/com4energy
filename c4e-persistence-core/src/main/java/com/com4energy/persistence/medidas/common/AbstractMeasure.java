@@ -26,10 +26,10 @@ public abstract class AbstractMeasure extends RevisionControlled {
     @Column(name = "fecha", nullable = false)
     protected LocalDateTime fecha;
 
-    // bandera_inv_ver: booleano almacenado como TINYINT UNSIGNED (0/1). Se mantiene NUMÉRICO (Short),
-    // no Boolean, para no cambiar el contrato de salida (CSV de sistemagestion / JSON de records-api).
+    // bandera_inv_ver: booleano (TINYINT(1) en BD, 0/1). Boolean de raíz para un contrato correcto;
+    // records-api lo serializa como true/false. (sistemagestion usa su propia entidad legacy, no esta.)
     @Column(name = "bandera_inv_ver", nullable = false)
-    protected Short banderaInvVer;
+    protected Boolean banderaInvVer;
 
     // Magnitudes y códigos de calidad: en BD son SMALLINT UNSIGNED (tope 65535; valores reales < 1k,
     // zona segura ~10k) -> Integer. Un valor fuera de rango cae a cuarentena por strict mode.
