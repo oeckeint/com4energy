@@ -103,6 +103,26 @@ En orden, un archivo se rechaza en la subida si:
 > - **2026-06-17**: redondeo HALF_EVEN (incl. empate al par), UPDATE in-place, `skippedIdentical`/`skippedStale`, precedencia por fila (#14/#15), overflow con los topes reducidos (SMALLINT UNSIGNED → cuarentena) y cross-familia.
 > - **2026-06-19**: precedencia de **iteración** (`.4` alta → `.4.1` iteración mayor gana → `.4.0` iteración menor `skipStale` → `.5` revisión mayor domina aunque su iteración sea 0), y **smoke test P2** (alta + corrección en `medida_qh`: insert/update/skipIdentical, y un decimal → defecto de parseo, parse-tolerante en QH).
 
+### Detalle — precedencia de iteración (archivo de control, 3 filas A/B/C)
+
+Familia `P1D_0031_0894_20260618`. Solo se cambia la fila **A**; B y C quedan idénticas en cada paso.
+
+| # | Entrada | Resultado | Estado de A | Prueba |
+|---|---|---|---|---|
+| 16 | `.4` (alta) | `persisted=3` | `(rev 4, iter 0)` | `.4` "pelado" se guarda como **iteración 0** (no NULL) |
+| 17 | `.4.1` (cambia A) | `updated=1, skippedIdentical=2` | `(4,1)`, `actent` actualizado | **iteración mayor** (misma revisión) → UPDATE |
+| 18 | `.4.0` (cambia A) | `updated=0, skippedIdentical=2, skippedStale=1`; `business_result=SUPERSEDED` | **intacta en `(4,1)`** | **iteración menor** no pisa → `skipStale` |
+| 19 | `.5` (cambia A) | `updated=1, skippedIdentical=2` | `(5,0)`, `actent` actualizado | **revisión mayor domina** aunque su iteración (0) < la existente (1) |
+
+> Nota: `.4` y `.4.0` son la **misma versión lógica** `(4,0)` con nombre distinto; el guard de duplicado compara el nombre crudo, así que ambos se procesan (el row-level los resuelve sin corromper). Endurecimiento pendiente: deduplicar por `(familia, revisión, iteración)` — ver tarea secundaria.
+
+### Detalle — smoke test P2 (cuarto-horario → `medida_qh`)
+
+| # | Entrada | Resultado | Prueba |
+|---|---|---|---|
+| 20 | `P2D_..._20260618.0` (alta, 3 filas enteras) | `measureType=MEDIDA_QH_P2, persisted=3, targetTable=medida_qh` | parseo P2 (enteros), INSERT en `medida_qh`, boolean 0/1, tipos, procedencia |
+| 21 | `P2D_..._20260618.1` (corrige 1 fila + 1 fila con decimal `300.5`) | `total=3, updated=1, skippedIdentical=1, parseDefects=1`; `PARTIAL_SUCCEEDED` | UPDATE + skipIdentical en QH; el decimal → **defecto de parseo** (`phase=parse`), no se guarda ni se redondea (P2 es solo-enteros) |
+
 ## Línea de evento por archivo (`measure_file_processed`)
 
 Cada archivo emite un resumen operativo. `total` = **todas las filas de medida que llegaron** en el
