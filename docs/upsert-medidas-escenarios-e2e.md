@@ -208,13 +208,18 @@ archivos fuera de convención.
 **Pendiente de validación E2E**: subir `.4`, luego `.4.0` con contenido distinto → el segundo debe
 caer a duplicados con `DUPLICATED_VERSION` y NO escribir en `medida_h`.
 
-## Pendientes de investigar (posibles bugs)
+## Investigaciones cerradas
 
-- **Posible falso `DUPLICATED_CONTENT`**: al cambiar el contenido y renombrar a `.4.4`, se marcó como
-  contenido duplicado (colisión con `.4.0`). Si el contenido realmente cambió, el hash SHA-256 del
-  archivo debería diferir y no debería marcarse. **Diagnóstico**: comparar el hash del archivo
-  rechazado contra la columna `hash` de `file_records` para la familia; si no coincide con ninguno,
-  es un bug en `DuplicatedContentByHashValidator`.
+- **Falso `DUPLICATED_CONTENT` — DESCARTADO (no es bug)**, verificado E2E el 2026-06-19 (reproducción
+  controlada, familia nueva `P1D_0031_0894_20260721`): se cargó `.4.0` (base), luego `.4.4` con **un
+  valor realmente cambiado** y luego `.4.5` **byte-idéntico** al `.4.0`.
+  - `.4.4` (contenido distinto → hash distinto) **se procesó** (`updated=1 skippedIdentical=2`), NO se
+    rechazó.
+  - `.4.5` (byte-idéntico → mismo hash) **sí** se rechazó `DUPLICATED_CONTENT`.
+
+  El guard de hash funciona correctamente: solo rechaza cuando los bytes son idénticos. El caso
+  reportado en su momento fue contenido byte-idéntico (copia renombrada sin cambio efectivo), no un
+  defecto del validador.
 
 ## Observaciones de rendimiento
 
