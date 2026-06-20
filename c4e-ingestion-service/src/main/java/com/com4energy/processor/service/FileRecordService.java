@@ -195,6 +195,10 @@ public class FileRecordService {
         return repository.existsByHash(hash);
     }
 
+    public boolean existsByMeasureVersion(String family, Integer revision, Integer iteration) {
+        return repository.existsByMeasureVersion(family, revision, iteration);
+    }
+
     public Optional<FileRecord> findByHash(String hash) {
         return repository.findByHash(hash);
     }

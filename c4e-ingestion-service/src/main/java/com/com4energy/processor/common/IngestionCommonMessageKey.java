@@ -47,6 +47,7 @@ public enum IngestionCommonMessageKey implements MessageKey {
      FAILURE_REASON_DUPLICATED_FILENAME("ingestion.failure.reason.duplicate-filename"),
      FAILURE_REASON_DUPLICATED_ORIGINAL_FILENAME("ingestion.failure.reason.duplicate-original-filename"),
      FAILURE_REASON_DUPLICATED_CONTENT("ingestion.failure.reason.duplicate-content"),
+     FAILURE_REASON_DUPLICATED_VERSION("ingestion.failure.reason.duplicate-version"),
     FAILURE_REASON_UNAUTHORIZED_ACCESS("ingestion.failure.reason.unauthorized-access"),
     FAILURE_REASON_TIMEOUT("ingestion.failure.reason.timeout"),
     FAILURE_REASON_MAX_RETRIES_EXCEEDED("ingestion.failure.reason.max-retries-exceeded"),

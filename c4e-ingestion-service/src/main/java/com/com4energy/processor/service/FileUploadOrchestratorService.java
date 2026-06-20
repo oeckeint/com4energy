@@ -144,7 +144,7 @@ public class FileUploadOrchestratorService {
 
                 if (fileValidator.isFailFast())
                     return switch (reason) {
-                        case DUPLICATED_ORIGINAL_FILENAME -> FileContext.fromWithDuplicatedOriginalFilenameStatus(validationContext, errors, reason);
+                        case DUPLICATED_ORIGINAL_FILENAME, DUPLICATED_VERSION -> FileContext.fromWithDuplicatedOriginalFilenameStatus(validationContext, errors, reason);
                         case DUPLICATED_CONTENT -> FileContext.fromWithDuplicatedContentStatus(validationContext, errors, reason);
                         default -> FileContext.fromWithCriticalValidationFailedStatus(validationContext, errors, reason);
                     };

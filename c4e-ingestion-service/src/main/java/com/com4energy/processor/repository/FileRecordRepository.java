@@ -50,6 +50,25 @@ public interface FileRecordRepository extends BaseFileRecordRepository {
 
     boolean existsByOriginalFilename(String originalFilename);
 
+    /**
+     * True si ya existe un archivo con la MISMA versión lógica (familia, revisión, iteración),
+     * sin importar el nombre crudo ni el estado. Cierra el caso {@code .4} ≡ {@code .4.0}: mismo
+     * (familia, revisión, iteración) aunque el nombre difiera. No considera versiones mayores ni
+     * menores — solo la tupla exacta.
+     */
+    @Query("""
+            select count(fr) > 0
+            from FileRecord fr
+            where fr.measureVersion.sourceFamilyKey = :family
+              and fr.measureVersion.revision = :revision
+              and fr.measureVersion.processingIteration = :iteration
+            """)
+    boolean existsByMeasureVersion(
+            @Param("family") String family,
+            @Param("revision") Integer revision,
+            @Param("iteration") Integer iteration
+    );
+
     Optional<FileRecord> findFirstByOriginalFilename(String originalFilename);
 
     @Query("SELECT f.originalFilename FROM FileRecord f WHERE f.originalFilename LIKE :pattern")

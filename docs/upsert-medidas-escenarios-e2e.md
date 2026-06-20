@@ -178,6 +178,34 @@ Las **tres capas son tolerantes**: una línea defectuosa nunca tumba el archivo;
   `MeasureBatchWriter.insertBatch`: resetea el `id` antes de guardar para forzar la ruta INSERT
   (`isNew == true`) en cada intento.
 
+## Guard de versión duplicada (`.4` ≡ `.4.0`) — implementado
+
+**Problema**: `P1D_..._20260502.4` y `P1D_..._20260502.4.0` son nombres distintos (el guard de
+nombre exacto no los empareja) y pueden tener contenido distinto (el guard de hash tampoco), pero
+representan la **misma versión lógica** `(familia, revisión=4, iteración=0)`. Sin guard, el segundo
+se procesaba como un last-write-wins silencioso sobre el primero — lo que se identificó como un
+"bypass".
+
+**Solución**: nuevo `DuplicatedMeasureVersionValidator` (`@Order(220)`, en la cadena de subida,
+después del guard de nombre `210` y antes del de contenido `300`). Parsea la versión del nombre con
+`FileNameVersionParserUtil`; si el nombre no sigue la convención (familia `null`, p. ej. XML) no
+aplica; si la tupla `(familia, revisión, iteración)` ya existe en `file_records`
+(`FileRecordRepository.existsByMeasureVersion`, sin importar estado), rechaza con
+`FailureReason.DUPLICATED_VERSION` y el archivo cae a la carpeta de **duplicados** (no a
+rechazados). El reporte conserva `DUPLICATED_VERSION` como motivo, distinto de
+`DUPLICATED_ORIGINAL_FILENAME`, para que diga la verdad: rechazado por versión equivalente, no por
+nombre.
+
+**Importante**: NO rechaza versiones mayores ni menores — solo la tupla exacta. Bumpear la
+iteración (`.4.1`) sigue siendo una versión nueva válida.
+
+**Cubierto por unit tests** (`DuplicatedMeasureVersionValidatorTest`): empareja `.4.0` cuando `.4`
+ya existe; acepta versión nueva; acepta iteración distinta de la misma revisión; no toca BD para
+archivos fuera de convención.
+
+**Pendiente de validación E2E**: subir `.4`, luego `.4.0` con contenido distinto → el segundo debe
+caer a duplicados con `DUPLICATED_VERSION` y NO escribir en `medida_h`.
+
 ## Pendientes de investigar (posibles bugs)
 
 - **Posible falso `DUPLICATED_CONTENT`**: al cambiar el contenido y renombrar a `.4.4`, se marcó como
