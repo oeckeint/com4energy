@@ -47,6 +47,9 @@ cubiertos y el comportamiento esperado en producción.
   `7.499 → 7`, `7.999 → 8`; empates: `0.5 → 0`, `7.5 → 8`, `8.5 → 8`). Se eligió HALF_EVEN porque
   estos valores se **suman** para decisiones de compra de energía y así el agregado no acumula sesgo
   (HALF_UP siempre subiría el `.5`). La política está centralizada en una constante (`MAGNITUDE_ROUNDING`).
+  **Solo aplica a P1.** Las medidas **P2 (cuarto-horario) se ingieren como enteros** (sin redondeo);
+  si un archivo P2 trajera un decimal, esa fila se reporta como **defecto de parseo** (`phase=parse`)
+  y no se guarda — visibilidad sin corromper. (Confirmado: las muestras P2 reales son enteras.)
 
 ## Archivo mixto: correcciones + altas + sin cambios, en una sola pasada
 
@@ -96,7 +99,9 @@ En orden, un archivo se rechaza en la subida si:
 | 14 | Rezagado: revisión inferior `.2` llega **después** de aplicar `.3`/`.4` | `persisted=2, skippedStale=2`; filas que chocan → `skippedStale` (conservan su valor nuevo, p.ej. `actent=202`, `id_file_record` sin cambiar); filas únicas → INSERT. `COUNT` 10→12 | **Núcleo del rediseño**: un archivo viejo que llega tarde **no pisa** lo nuevo y **no pierde** sus filas únicas. |
 | 15 | `.1` totalmente obsoleto (todas las `(cliente,fecha)` ya existen de revisión ≥) | `skippedStale=3, persisted=0`; `business_result=SUPERSEDED`, `quality_status=CLEAN`, `COUNT` sin cambio | No-op limpio, distinguible en el reporte. |
 
-> Validación E2E completa en BD real (dev, MySQL strict mode) el 2026-06-17 sobre archivo de control de 10 filas: redondeo HALF_EVEN (incl. empate al par), UPDATE in-place, `skippedIdentical`/`skippedStale`, precedencia por fila (#14/#15), overflow con los topes reducidos (SMALLINT UNSIGNED → cuarentena) y cross-familia.
+> Validación E2E completa en BD real (dev, MySQL strict mode) sobre archivos de control:
+> - **2026-06-17**: redondeo HALF_EVEN (incl. empate al par), UPDATE in-place, `skippedIdentical`/`skippedStale`, precedencia por fila (#14/#15), overflow con los topes reducidos (SMALLINT UNSIGNED → cuarentena) y cross-familia.
+> - **2026-06-19**: precedencia de **iteración** (`.4` alta → `.4.1` iteración mayor gana → `.4.0` iteración menor `skipStale` → `.5` revisión mayor domina aunque su iteración sea 0), y **smoke test P2** (alta + corrección en `medida_qh`: insert/update/skipIdentical, y un decimal → defecto de parseo, parse-tolerante en QH).
 
 ## Línea de evento por archivo (`measure_file_processed`)
 
