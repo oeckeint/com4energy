@@ -9,12 +9,11 @@ import com.com4energy.processor.repository.MedidaQHRepository;
 import com.com4energy.processor.repository.ClienteRepository;
 import com.com4energy.processor.repository.ExistingMeasureView;
 import com.com4energy.processor.service.measure.MeasureRecord;
+import static com.com4energy.processor.service.measure.MeasureMagnitudes.roundMagnitude;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,11 +35,6 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
     private static final int PAYLOAD_HASH_BYTES = 8;
     // Longitud del prefijo de CUPS contra el que se casa cliente.cups.
     private static final int CUPS_PREFIX_LENGTH = 20;
-    // Política de redondeo de las magnitudes horarias (P1) al entero de almacenamiento.
-    // HALF_EVEN (bancario): el empate .5 va al entero PAR, de modo que el sesgo se cancela en los
-    // agregados (estos valores se SUMAN para decisiones de compra de energía). Cambiar SOLO esta
-    // constante ajusta toda la política (p.ej. HALF_UP) sin tocar nada más.
-    private static final RoundingMode MAGNITUDE_ROUNDING = RoundingMode.HALF_EVEN;
 
     private final MedidaHRepository medidaHRepository;
     private final MedidaQHRepository medidaQHRepository;
@@ -553,19 +547,6 @@ public class JpaMeasurePersistenceAdapter implements MeasurePersistenceContracts
     /** Prefijo de 20 caracteres del CUPS usado para casar contra cliente.cups; null si es más corto. */
     private static String cupsPrefix(String cups) {
         return cups.length() >= CUPS_PREFIX_LENGTH ? cups.substring(0, CUPS_PREFIX_LENGTH) : null;
-    }
-
-    /**
-     * Redondea una magnitud horaria (P1) al entero más cercano con la política {@link #MAGNITUDE_ROUNDING}
-     * (HALF_EVEN). Ejemplos: 7.001 -> 7, 7.499 -> 7, 7.999 -> 8; en el empate exacto va al PAR:
-     * 0.5 -> 0, 7.5 -> 8, 8.5 -> 8.
-     *
-     * <p>Se redondea vía {@code BigDecimal.valueOf(double)} (usa la representación decimal corta del
-     * double) para que el borde .5 sea EXACTO a los decimales del archivo (≤3) — con {@code double}
-     * crudo un 7.5 podría ser 7.4999… y romper el empate.
-     */
-    private static int roundMagnitude(double value) {
-        return BigDecimal.valueOf(value).setScale(0, MAGNITUDE_ROUNDING).intValue();
     }
 
     private MedidaH toMedidaH(

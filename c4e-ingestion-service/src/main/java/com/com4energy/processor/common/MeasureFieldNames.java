@@ -27,6 +27,7 @@ public class MeasureFieldNames {
     public static final String QMEDRES1 = "qmedres1";
     public static final String MEDRES2 = "medres2";
     public static final String QMEDRES2 = "qmedres2";
+    public static final String METOD_OBT = "metodObt";
 
     // === P2 (QuarterHourly) SPECIFIC FIELDS ===
     public static final String P2_BANDERA_INV_VER = "banderaInvVer";

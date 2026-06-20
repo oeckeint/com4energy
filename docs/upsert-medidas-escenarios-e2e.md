@@ -155,8 +155,10 @@ Las **tres capas son tolerantes**: una línea defectuosa nunca tumba el archivo;
 | Capa | Cuándo | Comportamiento |
 |---|---|---|
 | **Parseo** | valor imposible de convertir, columnas faltantes | **Tolerante**: omite la línea mala, la reporta en `.sge_defect.jsonl` (`phase=parse`) y persiste el resto. Solo si NINGUNA línea parsea → archivo rechazado (`INVALID_FILE_FORMAT`). |
-| **Validación** (TOLERANT) | reglas de negocio (CUPS, rangos, no-negativos) | Reporta la fila como defecto, persiste las buenas. |
+| **Validación** (TOLERANT) | reglas de negocio (CUPS, no-negativos) y **rango de almacenamiento** (`STORAGE_RANGE`: magnitudes/calidad ≤ 65535 SMALLINT UNSIGNED, `metodObt` 0..255 TINYINT UNSIGNED) | Reporta la fila como defecto, persiste las buenas. |
 | **Binary-split** (BD) | parsea y valida OK, pero rompe una constraint de BD | Aísla la fila a cuarentena (`.sge_quarantine.jsonl`), persiste las buenas (commit parcial por `REQUIRES_NEW`). |
+
+> **Nota sobre el overflow (Path A, implementado)**: el rebase de una columna right-sized (p. ej. `actent` > 65535) ahora se atrapa en la capa de **validación** (`MagnitudeRangeRecordValidator`, `@Order(60)`), usando el mismo redondeo HALF_EVEN que la persistencia (centralizado en `MeasureMagnitudes`). Así el caso predecible se reporta como defecto limpio ANTES de la BD y **deja de disparar el binary-split y su ruido de Hibernate** (`SqlExceptionHelper` / `HHH100503`). El binary-split queda como red de último recurso solo para errores de BD genuinamente inesperados — donde el log SÍ debe gritar.
 
 ## Hallazgos corregidos vía E2E
 
