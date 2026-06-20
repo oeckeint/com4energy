@@ -14,8 +14,10 @@ cubiertos y el comportamiento esperado en producción.
 - **No se pierden datos buenos por una fila mala**: tres capas tolerantes (parseo, validación, BD)
   aíslan y reportan la fila problemática y **persisten el resto** (`PARTIAL_SUCCEEDED`), con commit
   parcial real. Cada defecto queda trazado en su reporte (`.jsonl`) y su evento al outbox.
-- **Integridad temporal**: el control de revisión/iteración garantiza que **un archivo viejo nunca
-  pisa datos más nuevos**; las correcciones se aplican in-place conservando el `id` de la medida.
+- **Integridad temporal e independencia del orden**: la precedencia revisión/iteración se resuelve
+  **por fila**, así que los archivos se pueden procesar en **cualquier orden** y un archivo viejo
+  (incluso si llega tarde) **nunca pisa datos más nuevos**; las correcciones se aplican in-place
+  conservando el `id` de la medida. Un archivo totalmente obsoleto queda como `SUPERSEDED` (no-op).
 - **Protección entre familias**: si un archivo intentara escribir sobre `(cliente, fecha)` de otra
   familia, se rechaza **antes de tocar la BD** (cero escrituras, BD intacta).
 - **Observabilidad**: cada archivo emite una línea de evento que **reconcilia el total** del archivo
@@ -32,12 +34,22 @@ cubiertos y el comportamiento esperado en producción.
   Ej. `P1D_0031_0894_20260502.3` y `P1D_0031_0894_20260502.3.1` son la misma familia.
 - **Revisión / iteración**: las extensiones numéricas del archivo (`.{revision}` y `.{revision}.{iteration}`).
   Gana siempre la `(revisión, iteración)` **más alta**. Una nueva revisión reinicia la iteración.
+  La precedencia se resuelve **POR FILA** (no rechazando el archivo): cada `(cliente, fecha)` conserva
+  el dato de la revisión/iteración más alta vista. Por eso los archivos pueden procesarse en
+  **cualquier orden** y un archivo viejo que llega tarde **no pisa** datos más nuevos (sus filas
+  obsoletas se omiten; sus filas únicas sí se insertan).
 - **Clave de negocio**: `(id_cliente, fecha)`. Identifica unívocamente una medida.
 - **Detección de cambios (`payload_hash`)**: por cada medida se guarda un hash de su contenido.
   Al reprocesar, si el hash no cambió → se **omite** (no se reescribe); si cambió → se **actualiza
   en su lugar** (mismo registro).
-- **Redondeo (techo)**: las magnitudes horarias (P1) con decimales se guardan redondeadas hacia
-  arriba al entero siguiente (`7.001 → 8`, `7.999 → 8`), por especificación del cliente.
+- **Redondeo (HALF_EVEN / bancario)**: las magnitudes horarias (P1) con decimales se guardan
+  redondeadas al entero más cercano; el empate exacto `.5` va al entero **par** (`7.001 → 7`,
+  `7.499 → 7`, `7.999 → 8`; empates: `0.5 → 0`, `7.5 → 8`, `8.5 → 8`). Se eligió HALF_EVEN porque
+  estos valores se **suman** para decisiones de compra de energía y así el agregado no acumula sesgo
+  (HALF_UP siempre subiría el `.5`). La política está centralizada en una constante (`MAGNITUDE_ROUNDING`).
+  **Solo aplica a P1.** Las medidas **P2 (cuarto-horario) se ingieren como enteros** (sin redondeo);
+  si un archivo P2 trajera un decimal, esa fila se reporta como **defecto de parseo** (`phase=parse`)
+  y no se guarda — visibilidad sin corromper. (Confirmado: las muestras P2 reales son enteras.)
 
 ## Archivo mixto: correcciones + altas + sin cambios, en una sola pasada
 
@@ -57,30 +69,59 @@ El cliente manda el archivo corregido completo; el sistema aplica únicamente lo
 En orden, un archivo se rechaza en la subida si:
 1. **Nombre duplicado** → `DUPLICATED_ORIGINAL_FILENAME`.
 2. **Contenido duplicado** (mismo hash de archivo, aunque cambie el nombre) → `DUPLICATED_CONTENT`.
-3. **Revisión superada** (no es estrictamente más nueva que lo ya aplicado de su familia) →
-   `SUPERSEDED_REVISION`.
+
+> Nota: ya **no** se rechaza por "revisión superada" a nivel archivo. Una revisión inferior se procesa
+> y la precedencia se resuelve por fila (sus filas obsoletas se omiten como `skipped-obsoleto`).
 
 ## Escenarios validados (BD real, dev)
 
 | # | Entrada | Resultado | Notas |
 |---|---|---|---|
-| 1 | Carga inicial `.3` (BD fresca, 140,952 filas) | `persisted=140,952, updated=0, skipped=0` | Todo INSERT. Techo aplicado (`7.957 → 8`), `payload_hash` BINARY(8). ~8.2s. |
+| 1 | Carga inicial `.3` (BD fresca, 140,952 filas) | `persisted=140,952, updated=0, skipped=0` | Todo INSERT. Redondeo HALF_EVEN (`7.957 → 8`), `payload_hash` BINARY(8). ~8.2s. |
 | 2 | Reprocesar el mismo `.3` (mismo nombre y contenido) | Rechazado en subida: `DUPLICATED_ORIGINAL_FILENAME` | No llega a procesarse. |
 | 3 | `.3.1` con **mismo contenido**, nombre nuevo | Rechazado en subida: `DUPLICATED_CONTENT` | El hash del archivo es idéntico → no hay nada que procesar. |
 | 4 | `.3.1` con **1 valor modificado** en una `(cliente,fecha)` existente | `persisted=0, updated=1, skipped=140,951` | UPDATE in-place (mismo `id_medida_h`). 140,951 omitidas → **~2s** (vs 8s). `COUNT(*)` no cambia. |
 | 5 | `.3.2` cambiando la **fecha** de una línea (2026→2027) | `persisted=1, updated=1, skipped=140,951` | La línea movida a 2027 = clave nueva → **INSERT**; la fecha vieja vuelve a su valor original → **UPDATE**. `COUNT(*)` sube en 1. Editar la identidad (cliente/fecha) crea fila nueva y deja la vieja. |
 | 6 | Subir a **revisión `.4`** teniendo aplicado hasta `(3,3)` | Aceptado; `file_records`: `revision=4, processing_iteration=0`. Upsert: `persisted=1, skipped=140,952` | **La revisión mayor gana aunque su iteración (0) sea menor que la última (3)**: la revisión domina sobre la iteración, y la iteración se reinicia a 0 con la nueva revisión. |
 | 7 | `.4.1` (bump de iteración dentro de la misma revisión) | Aceptado; `file_records`: `revision=4, processing_iteration=1`. Upsert aplica los cambios. | Iteración mayor dentro de la misma revisión gana. |
-| 8 | `.4.3` teniendo aplicado `(4,4)` | **Rechazado**: `SUPERSEDED_REVISION` → carpeta `/rejected`, BD intacta. Evento `FILE_REJECTED` en `file_records_events` con razón y detalle. | Revisión/iteración **menor** que lo aplicado no pisa datos nuevos. Detectado en la validación de upload (`CHAIN_VALIDATION`). |
+| 8 | `.4.3` teniendo aplicado `(4,4)` | **Procesado, sin escrituras netas**: cada `(cliente,fecha)` ya existe de `(4,4)` ≥ `(4,3)` → todo `skipped-obsoleto`; `business_result=SUPERSEDED`, BD intacta. | Revisión/iteración **menor** ya no se rechaza: se procesa y la precedencia por fila omite lo obsoleto sin pisar datos nuevos. |
 
 | 9 | `.6` con **1 fila válida modificada + 1 fila con `actent` fuera de rango** (`INT UNSIGNED`) | `updated=1, defects=1, skipped=140,951`; `PARTIAL_SUCCEEDED`, va a `/processed`. La fila mala se aísla a `.sge_quarantine.jsonl` + evento `FILE_PERSISTENCE_QUARANTINE`. | **Commit parcial real validado**: en el mismo lote que falló, la fila buena se guardó y la mala se aisló (binary-split + `REQUIRES_NEW`). Es la pieza que ningún test unitario podía cubrir. |
 | 10 | `.7` con **1 fila ingarseable (`actent=abc`) + 1 fila `actent` fuera de rango + 1 cambio válido** | `updated=1, defects=2, skipped=140,950`; `PARTIAL_SUCCEEDED`. La de `abc` → `.sge_defect.jsonl` (`phase=parse`), la de overflow → `.sge_quarantine.jsonl`. | **Parseo tolerante validado** + las 3 capas conviviendo: una fila mala (de cualquier tipo) ya no tumba el archivo; se persiste el resto. |
 | 11 | **Alta inicial (BD fresca)** del `.3` con **1 fila ingarseable (`abc`) + 1 fila `actent` fuera de rango** al final | `total=140,954, persisted=140,952, updated=0, skipped=0, parseDefects=1, quarantined=1`; `PARTIAL_SUCCEEDED`. ~8.3s. | **Binary-split en el camino INSERT validado**: las 140,952 buenas insertan, la de overflow se aísla a cuarentena (búsqueda binaria converge a 1 fila) y la de `abc` a `.sge_defect.jsonl`. Destapó y validó el fix del bug de reintento (`StaleObjectStateException` por reuso de instancias con id ya asignado). |
-| 12 | **Colisión cross-familia**: archivo de OTRA familia (`...20260503`, sin previo aplicado) con `(cliente,fecha)` ya cargadas por la familia `...20260502` | **Rechazado**: `CROSS_FAMILY_COLLISION` → `/rejected`, **BD intacta** (0 escrituras), evento `FILE_REJECTED`. ~88ms. | **Pre-check antes de escribir validado**: el prefetch detecta `(cliente,fecha)` existentes + familia sin previo aplicado → rechaza sin tocar la BD (sin binary-split ni cuarentena). `uk_business` es global; esto protege contra que una familia pise datos de otra. |
+| 12 | **Colisión cross-familia**: archivo de OTRA familia con `(cliente,fecha)` ya cargadas por otra familia | **Rechazado**: `CROSS_FAMILY_COLLISION` → `/rejected`, `business_result=NOT_PERSISTED`, **BD intacta** (0 escrituras), evento `FILE_REJECTED`. | **Detección por familia real validada**: el prefetch trae la familia de cada fila existente y la compara con la del archivo entrante; si difiere → rechazo antes de escribir. (Reemplazó la heurística anterior; más preciso.) |
 
-## Escenarios pendientes de validar
+## Escenarios de precedencia por fila (validados, BD real)
 
-Ninguno: los 12 escenarios están validados contra BD real (dev, MySQL strict mode).
+| # | Entrada | Resultado | Notas |
+|---|---|---|---|
+| 13 | Mismo lote, `.0` y `.1` en cualquier orden | Estado final idéntico sin importar el orden; `.1` gana, únicas de `.0` insertan | Cubierto por el mecanismo de #14 (la precedencia es por fila, no por orden de proceso). |
+| 14 | Rezagado: revisión inferior `.2` llega **después** de aplicar `.3`/`.4` | `persisted=2, skippedStale=2`; filas que chocan → `skippedStale` (conservan su valor nuevo, p.ej. `actent=202`, `id_file_record` sin cambiar); filas únicas → INSERT. `COUNT` 10→12 | **Núcleo del rediseño**: un archivo viejo que llega tarde **no pisa** lo nuevo y **no pierde** sus filas únicas. |
+| 15 | `.1` totalmente obsoleto (todas las `(cliente,fecha)` ya existen de revisión ≥) | `skippedStale=3, persisted=0`; `business_result=SUPERSEDED`, `quality_status=CLEAN`, `COUNT` sin cambio | No-op limpio, distinguible en el reporte. |
+
+> Validación E2E completa en BD real (dev, MySQL strict mode) sobre archivos de control:
+> - **2026-06-17**: redondeo HALF_EVEN (incl. empate al par), UPDATE in-place, `skippedIdentical`/`skippedStale`, precedencia por fila (#14/#15), overflow con los topes reducidos (SMALLINT UNSIGNED → cuarentena) y cross-familia.
+> - **2026-06-19**: precedencia de **iteración** (`.4` alta → `.4.1` iteración mayor gana → `.4.0` iteración menor `skipStale` → `.5` revisión mayor domina aunque su iteración sea 0), y **smoke test P2** (alta + corrección en `medida_qh`: insert/update/skipIdentical, y un decimal → defecto de parseo, parse-tolerante en QH).
+
+### Detalle — precedencia de iteración (archivo de control, 3 filas A/B/C)
+
+Familia `P1D_0031_0894_20260618`. Solo se cambia la fila **A**; B y C quedan idénticas en cada paso.
+
+| # | Entrada | Resultado | Estado de A | Prueba |
+|---|---|---|---|---|
+| 16 | `.4` (alta) | `persisted=3` | `(rev 4, iter 0)` | `.4` "pelado" se guarda como **iteración 0** (no NULL) |
+| 17 | `.4.1` (cambia A) | `updated=1, skippedIdentical=2` | `(4,1)`, `actent` actualizado | **iteración mayor** (misma revisión) → UPDATE |
+| 18 | `.4.0` (cambia A) | `updated=0, skippedIdentical=2, skippedStale=1`; `business_result=SUPERSEDED` | **intacta en `(4,1)`** | **iteración menor** no pisa → `skipStale` |
+| 19 | `.5` (cambia A) | `updated=1, skippedIdentical=2` | `(5,0)`, `actent` actualizado | **revisión mayor domina** aunque su iteración (0) < la existente (1) |
+
+> Nota: `.4` y `.4.0` son la **misma versión lógica** `(4,0)` con nombre distinto; el guard de duplicado compara el nombre crudo, así que ambos se procesan (el row-level los resuelve sin corromper). Endurecimiento pendiente: deduplicar por `(familia, revisión, iteración)` — ver tarea secundaria.
+
+### Detalle — smoke test P2 (cuarto-horario → `medida_qh`)
+
+| # | Entrada | Resultado | Prueba |
+|---|---|---|---|
+| 20 | `P2D_..._20260618.0` (alta, 3 filas enteras) | `measureType=MEDIDA_QH_P2, persisted=3, targetTable=medida_qh` | parseo P2 (enteros), INSERT en `medida_qh`, boolean 0/1, tipos, procedencia |
+| 21 | `P2D_..._20260618.1` (corrige 1 fila + 1 fila con decimal `300.5`) | `total=3, updated=1, skippedIdentical=1, parseDefects=1`; `PARTIAL_SUCCEEDED` | UPDATE + skipIdentical en QH; el decimal → **defecto de parseo** (`phase=parse`), no se guarda ni se redondea (P2 es solo-enteros) |
 
 ## Línea de evento por archivo (`measure_file_processed`)
 
@@ -89,13 +130,16 @@ archivo (las que parsearon OK + las que fallaron al parsear). Los defectos se de
 modo que **una sola invariante reconcilia el archivo completo**:
 
 ```
-total = persisted + updated + skipped + parseDefects + validationDefects + quarantined
+total = persisted + updated + skippedIdentical + skippedStale + parseDefects + validationDefects + quarantined
 ```
 
 | Campo | Significado |
 |---|---|
 | `total` | Filas de medida en el archivo (parsearon OK + fallaron al parsear) |
-| `persisted` / `updated` / `skipped` | Insertadas / corregidas in-place / omitidas por hash idéntico |
+| `persisted` / `updated` | Insertadas / corregidas in-place |
+| `skippedIdentical` | Omitidas porque el contenido era idéntico (mismo `payload_hash`) |
+| `skippedStale` | Omitidas porque ya existía una revisión/iteración igual o más reciente (obsoletas) |
+| `skipped` | Total de omitidas (`skippedIdentical + skippedStale`) |
 | `parseDefects` | Líneas que no se pudieron parsear → `.sge_defect.jsonl` (`phase=parse`) |
 | `validationDefects` | Parsearon pero fallaron validación de negocio (CUPS, rangos…) → `.sge_defect.jsonl` (`phase=validation`) |
 | `quarantined` | Parsearon y validaron OK pero rompieron una constraint de BD → `.sge_quarantine.jsonl` |

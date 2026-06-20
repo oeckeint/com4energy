@@ -19,65 +19,69 @@ public abstract class AbstractMeasure extends RevisionControlled {
     @Column(name = "id_cliente", nullable = false)
     protected Integer clienteId;
 
+    // tipo_medida y metod_obt: TINYINT UNSIGNED en BD (valores < 100) -> Short.
     @Column(name = "tipo_medida", nullable = false)
-    protected Integer tipoMedida;
+    protected Short tipoMedida;
 
     @Column(name = "fecha", nullable = false)
     protected LocalDateTime fecha;
 
+    // bandera_inv_ver: booleano (TINYINT(1) en BD, 0/1). Boolean de raíz para un contrato correcto;
+    // records-api lo serializa como true/false. (sistemagestion usa su propia entidad legacy, no esta.)
     @Column(name = "bandera_inv_ver", nullable = false)
-    protected Integer banderaInvVer;
+    protected Boolean banderaInvVer;
 
-    // Campos INT UNSIGNED en BD -> usar Long para evitar overflow (UNSIGNED max = 4,294,967,295)
+    // Magnitudes y códigos de calidad: en BD son SMALLINT UNSIGNED (tope 65535; valores reales < 1k,
+    // zona segura ~10k) -> Integer. Un valor fuera de rango cae a cuarentena por strict mode.
     @Column(name = "actent", nullable = false)
-    protected Long actent;
+    protected Integer actent;
 
     @Column(name = "qactent", nullable = false)
-    protected Long qactent;
+    protected Integer qactent;
 
     @Column(name = "actsal", nullable = false)
-    protected Long actsal;
+    protected Integer actsal;
 
     @Column(name = "qactsal", nullable = false)
-    protected Long qactsal;
+    protected Integer qactsal;
 
     @Column(name = "r_q1", nullable = false)
-    protected Long rq1;
+    protected Integer rq1;
 
     @Column(name = "qr_q1", nullable = false)
-    protected Long qrq1;
+    protected Integer qrq1;
 
     @Column(name = "r_q2", nullable = false)
-    protected Long rq2;
+    protected Integer rq2;
 
     @Column(name = "qr_q2", nullable = false)
-    protected Long qrq2;
+    protected Integer qrq2;
 
     @Column(name = "r_q3", nullable = false)
-    protected Long rq3;
+    protected Integer rq3;
 
     @Column(name = "qr_q3", nullable = false)
-    protected Long qrq3;
+    protected Integer qrq3;
 
     @Column(name = "r_q4", nullable = false)
-    protected Long rq4;
+    protected Integer rq4;
 
     @Column(name = "qr_q4", nullable = false)
-    protected Long qrq4;
+    protected Integer qrq4;
 
     @Column(name = "medres1", nullable = false)
-    protected Long medres1;
+    protected Integer medres1;
 
     @Column(name = "qmedres1", nullable = false)
-    protected Long qmedres1;
+    protected Integer qmedres1;
 
     @Column(name = "medres2", nullable = false)
-    protected Long medres2;
+    protected Integer medres2;
 
     @Column(name = "qmedres2", nullable = false)
-    protected Long qmedres2;
+    protected Integer qmedres2;
 
     @Column(name = "metod_obt")
-    protected Integer metodObt;
+    protected Short metodObt;
 
 }

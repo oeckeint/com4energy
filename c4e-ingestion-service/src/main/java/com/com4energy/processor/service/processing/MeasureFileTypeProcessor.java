@@ -4,12 +4,12 @@ import com.com4energy.i18n.core.Messages;
 import com.com4energy.processor.common.LogsCommonMessageKey;
 import com.com4energy.persistence.filerecord.enums.FailureReason;
 import com.com4energy.persistence.filerecord.FileRecord;
+import com.com4energy.persistence.filerecord.MeasureFileVersion;
 import com.com4energy.persistence.filerecord.enums.FileType;
 import com.com4energy.persistence.filerecord.enums.BusinessResult;
 import com.com4energy.persistence.filerecord.enums.QualityStatus;
 import com.com4energy.processor.service.measure.MeasureFileParserService;
 import com.com4energy.processor.service.measure.MeasureParseResult;
-import com.com4energy.processor.service.measure.MeasureRevisionGuard;
 import com.com4energy.processor.service.measure.persistence.MeasurePersistenceContracts;
 import com.com4energy.processor.service.measure.validation.MeasureDefectReportService;
 import com.com4energy.processor.service.measure.validation.MeasureRecordValidationChain;
@@ -38,20 +38,17 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
     private final MeasurePersistenceContracts.MeasurePersistencePort measurePersistencePort;
     private final MeasureRecordValidationChain measureRecordValidationChain;
     private final MeasureDefectReportService measureDefectReportService;
-    private final MeasureRevisionGuard measureRevisionGuard;
 
     public MeasureFileTypeProcessor(
             MeasureFileParserService measureFileParserService,
             MeasurePersistenceContracts.MeasurePersistencePort measurePersistencePort,
             MeasureRecordValidationChain measureRecordValidationChain,
-            MeasureDefectReportService measureDefectReportService,
-            MeasureRevisionGuard measureRevisionGuard
+            MeasureDefectReportService measureDefectReportService
     ) {
         this.measureFileParserService = measureFileParserService;
         this.measurePersistencePort = measurePersistencePort;
         this.measureRecordValidationChain = measureRecordValidationChain;
         this.measureDefectReportService = measureDefectReportService;
-        this.measureRevisionGuard = measureRevisionGuard;
     }
 
     @Override
@@ -63,20 +60,9 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
     public FileTypeProcessingResult process(FileRecord fileRecord, Path processingPath) {
         long parseStartedAtNanos = System.nanoTime();
 
-        // Guard de precedencia (autoritativo): si ya se aplicó una revisión igual o más reciente
-        // de esta familia, descartar antes del upsert para no pisar datos más nuevos.
-        if (measureRevisionGuard.isSupersededByApplied(fileRecord.getMeasureVersion())) {
-            String comment = "Revisión superseded: ya se aplicó una versión igual o más reciente de la familia";
-            log.info("Skipping file '{}' (id={}): {}", fileRecord.getOriginalFilename(), fileRecord.getId(), comment);
-            fileRecord.setBusinessResult(BusinessResult.NOT_PERSISTED);
-            // Reporta el rechazo al outbox worker (FILE_REJECTED) además de marcarlo en BD.
-            return FileTypeProcessingResult.rejected(
-                    FailureReason.SUPERSEDED_REVISION,
-                    comment,
-                    List.of(FileTypeProcessingResult.DeferredOutboxEvent.fileRejected())
-            );
-        }
-
+        // Nota: NO se rechaza por antigüedad a nivel archivo. La precedencia revisión/iteración se
+        // resuelve POR FILA en el upsert (insert / skip-idéntico / skip-obsoleto / update), de modo
+        // que el procesamiento es independiente del orden de llegada y a prueba de rezagados.
         try {
             // Use the FileType from database (already classified at file ingestion)
             // Don't recalculate it - the job just reads and processes based on pre-classified type
@@ -120,17 +106,19 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
             );
             int validationErrorCount = validationResult.errorCount();
 
-            // Indica si la familia ya tiene un archivo aplicado. Si NO, y el prefetch del adapter
-            // encuentra (cliente, fecha) existentes, son de otra familia -> colisión cross-familia.
-            boolean familyHasPriorMeasures = measureRevisionGuard.hasAppliedSibling(fileRecord.getMeasureVersion());
-
+            // Procedencia del archivo entrante (familia + revisión/iteración): el adapter resuelve la
+            // precedencia POR FILA (no se rechaza por antigüedad a nivel archivo) y detecta colisiones
+            // cross-familia comparando la familia real de cada fila existente.
+            MeasureFileVersion version = fileRecord.getMeasureVersion();
             long persistStartedAtNanos = System.nanoTime();
             MeasurePersistenceContracts.MeasurePersistenceResult persistenceResult = measurePersistencePort.persist(
                     new MeasurePersistenceContracts.PersistMeasuresCommand(
                             fileRecord.getId(),
                             fileRecord.getOriginalFilename(),
                             validationResult.validRecords(),
-                            familyHasPriorMeasures
+                            version != null ? version.getSourceFamilyKey() : null,
+                            version != null ? version.getRevision() : null,
+                            version != null ? version.getProcessingIteration() : null
                     )
             );
             long persistDurationMs = elapsedMillis(persistStartedAtNanos);
@@ -159,8 +147,10 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
             int validationDefects = validationErrorCount + persistenceResult.errorCount(); // rechazados antes del INSERT
             int quarantinedMeasures = persistenceResult.failedRecords().size();       // aislados por binary-split (constraint BD)
             int defectCount = parseDefects + validationDefects + quarantinedMeasures;
-            int skippedMeasures = persistenceResult.skippedCount();
-            // Manejados OK = insertados + actualizados (revisión) + omitidos (idénticos por hash).
+            int skippedIdentical = persistenceResult.skippedIdenticalCount();   // hash igual (sin cambio)
+            int skippedStale = persistenceResult.skippedStaleCount();           // ya existe revisión >= (obsoleto)
+            int skippedMeasures = skippedIdentical + skippedStale;
+            // Manejados OK = insertados + actualizados + omitidos (idénticos u obsoletos).
             int handledMeasures = persistedMeasures + updatedMeasures + skippedMeasures;
             boolean hasValidationOrPersistenceErrors = validationResult.hasErrors() || persistenceResult.hasErrors();
             boolean hasQuarantineRecords = persistenceResult.hasFailedRecords();
@@ -175,9 +165,16 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
             fileRecord.setProcessedRecords(handledMeasures);
             fileRecord.setDefectedRecords(defectCount);
             fileRecord.setQualityStatus(hasDefects ? QualityStatus.WITH_DEFECTS : QualityStatus.CLEAN);
+            int netWrites = persistedMeasures + updatedMeasures;
             if (!hasDefects) {
-                // Incluye el reproceso idéntico (todo omitido): sin defectos = éxito.
-                fileRecord.setBusinessResult(BusinessResult.FULLY_SUCCEEDED);
+                if (netWrites == 0 && skippedStale > 0) {
+                    // Archivo válido pero OBSOLETO: todo se omitió porque ya existía una revisión/iteración
+                    // igual o más reciente (cero escrituras netas). No-op limpio, distinguible en el reporte.
+                    fileRecord.setBusinessResult(BusinessResult.SUPERSEDED);
+                } else {
+                    // Incluye el reproceso idéntico (todo omitido por hash): sin defectos = éxito.
+                    fileRecord.setBusinessResult(BusinessResult.FULLY_SUCCEEDED);
+                }
             } else if (handledMeasures > 0) {
                 fileRecord.setBusinessResult(BusinessResult.PARTIAL_SUCCEEDED);
             } else {
@@ -201,7 +198,9 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
                     updatedMeasures,
                     parseDefects,
                     validationDefects,
-                    quarantinedMeasures
+                    quarantinedMeasures,
+                    skippedIdentical,
+                    skippedStale
             ));
 
             if (!hasDefects) {
@@ -212,6 +211,8 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
                         + "\"persisted\":" + persistedMeasures + ","
                         + "\"updated\":" + updatedMeasures + ","
                         + "\"skipped\":" + skippedMeasures + ","
+                        + "\"skippedIdentical\":" + skippedIdentical + ","
+                        + "\"skippedStale\":" + skippedStale + ","
                         + "\"defects\":" + defectCount + ","
                         + "\"parseDefects\":" + parseDefects + ","
                         + "\"validationDefects\":" + validationDefects + ","

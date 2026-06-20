@@ -61,20 +61,20 @@ class MeasureBatchWriterTest {
         // Fila managed existente (la que se actualizará in-place).
         MedidaH managed = new MedidaH();
         managed.setId(555L);
-        managed.setActent(1L);
+        managed.setActent(1);
         when(repository.findAllById(any())).thenReturn(List.of(managed));
 
         // Entidad detached con id existente + valores nuevos.
         MedidaH detached = MedidaH.builder()
                 .clienteId(7)
                 .fecha(LocalDateTime.of(2026, 4, 16, 1, 0))
-                .tipoMedida(11)
-                .banderaInvVer(1)
-                .actent(99L)
-                .qactent(0L).actsal(0L).qactsal(0L)
-                .rq1(0L).qrq1(0L).rq2(0L).qrq2(0L).rq3(0L).qrq3(0L).rq4(0L).qrq4(0L)
-                .medres1(0L).qmedres1(0L).medres2(0L).qmedres2(0L)
-                .metodObt(1)
+                .tipoMedida((short) 11)
+                .banderaInvVer(true)
+                .actent(99)
+                .qactent(0).actsal(0).qactsal(0)
+                .rq1(0).qrq1(0).rq2(0).qrq2(0).rq3(0).qrq3(0).rq4(0).qrq4(0)
+                .medres1(0).qmedres1(0).medres2(0).qmedres2(0)
+                .metodObt((short) 1)
                 .fileRecordId(42L)
                 .payloadHash(new byte[]{1, 2, 3, 4, 5, 6, 7, 8})
                 .payloadHashVersion(1)
@@ -86,7 +86,7 @@ class MeasureBatchWriterTest {
         // La fila managed conserva su id y recibe las columnas nuevas.
         assertEquals(555L, managed.getId().longValue());
         assertEquals(7, managed.getClienteId().intValue());
-        assertEquals(99L, managed.getActent().longValue());
+        assertEquals(99, managed.getActent().intValue());
         assertEquals(42L, managed.getFileRecordId().longValue());
     }
 }
