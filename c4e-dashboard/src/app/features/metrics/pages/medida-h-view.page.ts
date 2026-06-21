@@ -512,16 +512,40 @@ export class MedidaHPage implements OnInit, OnDestroy {
       }
 
       if (sourceCount === 1) {
-        return `Origen: ${sources[0]}`;
+        const [only] = sources;
+        const created = this.formatOriginDate(only.fechaCreacion);
+        return created
+          ? `Origen: ${only.nombre}\nCreado: ${created}`
+          : `Origen: ${only.nombre}`;
       }
 
-      const preview = sources.slice(0, 3).join(', ');
+      const preview = sources
+        .slice(0, 3)
+        .map(source => {
+          const created = this.formatOriginDate(source.fechaCreacion);
+          return created ? `• ${source.nombre} — ${created}` : `• ${source.nombre}`;
+        })
+        .join('\n');
       const remaining = Math.max(sourceCount - 3, 0);
-      const extra = remaining > 0 ? ` +${remaining} mas` : '';
-      return `Origenes (${sourceCount}): ${preview}${extra}`;
+      const extra = remaining > 0 ? `\n+${remaining} mas` : '';
+      return `Origenes (${sourceCount}):\n${preview}${extra}`;
     } catch {
       return 'No se pudo cargar el origen del archivo';
     }
+  }
+
+  /** Formatea la fecha de creacion del archivo (ISO del backend) a dd/MM/yyyy HH:mm. */
+  private formatOriginDate(raw: string | null): string {
+    if (!raw) {
+      return '';
+    }
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+    const pad = (n: number): string => String(n).padStart(2, '0');
+    return `${pad(parsed.getDate())}/${pad(parsed.getMonth() + 1)}/${parsed.getFullYear()} `
+      + `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
   }
 
   private parseHourLabel(hourLabel: string): number | null {

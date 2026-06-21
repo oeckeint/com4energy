@@ -420,6 +420,7 @@ export interface MeasureActiveFilterPill {
       color: #0f172a;
       font-size: 11px;
       line-height: 1.3;
+      white-space: pre-line;
       box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
       z-index: 30;
     }

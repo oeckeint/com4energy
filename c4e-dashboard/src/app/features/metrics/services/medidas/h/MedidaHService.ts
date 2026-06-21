@@ -14,12 +14,17 @@ interface MedidaHMatrixRow {
   values: Record<string, number | null>;
 }
 
+export interface MedidaHCellOrigin {
+  nombre: string;
+  fechaCreacion: string | null;
+}
+
 export interface MedidaHCellOriginsResponse {
   clienteId: number;
   hora: number;
   totalRegistros: number;
   origenesDistintos: number;
-  origenes: string[];
+  origenes: MedidaHCellOrigin[];
 }
 
 interface MedidaColumnValidation {

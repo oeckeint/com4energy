@@ -8,6 +8,7 @@ import com.com4energy.recordsapi.controller.common.ResponseHelper;
 import com.com4energy.recordsapi.controller.common.dto.PageResponse;
 import com.com4energy.recordsapi.controller.medidas.DateRangeHelper;
 import com.com4energy.recordsapi.controller.medidas.MedidasConstants;
+import com.com4energy.recordsapi.controller.medidas.h.dto.MedidaHCellOriginResponse;
 import com.com4energy.recordsapi.controller.medidas.h.dto.MedidaHHourlyPoint;
 import com.com4energy.persistence.medidas.medidah.MedidaH;
 import com.com4energy.recordsapi.exception.ResourceNotFoundException;
@@ -18,12 +19,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -70,7 +73,7 @@ public class MedidaHController {
     }
 
     @GetMapping(ApiConstants.ID_PATH)
-    public ResponseEntity<MedidaH> getById(@PathVariable Long id) {
+    public ResponseEntity<MedidaH> getById(@PathVariable(name = "id") Long id) {
 
         MedidaH medida = medidaHService.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -91,6 +94,27 @@ public class MedidaHController {
             @RequestParam(name = "tarifa", required = false) String tarifa,
             @RequestParam(name = "clientIds", required = false) List<Integer> clientIds) {
         List<MedidaHHourlyPoint> result = medidaHService.findHourlyMatrixFiltered(date, tarifa, clientIds);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Detalle de orígenes de una celda de la matriz: qué archivo(s) de carga aportan
+     * registros a un (cliente, hora) del día indicado. El origen se deriva del file_record
+     * apuntado por medida_h.id_file_record (sustituye a la antigua columna "origen").
+     */
+    @GetMapping(MedidaHConstants.CELL_ORIGINS_PATH)
+    public ResponseEntity<MedidaHCellOriginResponse> getCellOrigins(
+            @RequestParam(name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(name = "clientId") Integer clientId,
+            @RequestParam(name = "hour") Integer hour) {
+        if (clientId == null || clientId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "clientId debe ser mayor que 0");
+        }
+        if (hour == null || hour < 0 || hour > 23) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "hour debe estar entre 0 y 23");
+        }
+
+        MedidaHCellOriginResponse result = medidaHService.findCellOrigins(date, clientId, hour);
         return ResponseEntity.ok(result);
     }
 

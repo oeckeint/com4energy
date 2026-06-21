@@ -2,6 +2,7 @@ package com.com4energy.recordsapi.repository;
 
 import com.com4energy.persistence.medidas.medidah.BaseMedidaHRepository;
 import com.com4energy.persistence.medidas.medidah.MedidaH;
+import com.com4energy.recordsapi.controller.medidas.h.dto.MedidaHCellOriginCount;
 import com.com4energy.recordsapi.controller.medidas.h.dto.MedidaHHourlyPoint;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -85,4 +86,26 @@ public interface MedidaHRepository extends BaseMedidaHRepository {
                                                                   @Param("end") LocalDateTime end,
                                                                   @Param("tarifa") String tarifa,
                                                                   @Param("clientIds") List<Integer> clientIds);
+
+    /**
+     * Orígenes (archivos de carga) que aportan filas a una celda (cliente/hora/día).
+     * El origen ya no es una columna de medida_h: se deriva del file_record apuntado por
+     * id_file_record (nombre original del archivo; si falta, el final; si tampoco, etiqueta neutra).
+     */
+    @Query(value =
+            "SELECT COALESCE(NULLIF(TRIM(fr.original_filename), ''), NULLIF(TRIM(fr.final_filename), ''), 'Origen no informado') AS origen, "
+            + "COUNT(*) AS registros, "
+            + "fr.created_at AS fechaCreacion "
+            + "FROM medida_h m "
+            + "JOIN file_records fr ON fr.id = m.id_file_record "
+            + "WHERE m.id_cliente = :clientId "
+            + "AND m.fecha >= :start AND m.fecha < :end "
+            + "AND HOUR(m.fecha) = :hour "
+            + "GROUP BY fr.id "
+            + "ORDER BY registros DESC, origen ASC",
+            nativeQuery = true)
+    List<MedidaHCellOriginCount> findCellOrigins(@Param("clientId") Integer clientId,
+                                                 @Param("hour") Integer hour,
+                                                 @Param("start") LocalDateTime start,
+                                                 @Param("end") LocalDateTime end);
 }

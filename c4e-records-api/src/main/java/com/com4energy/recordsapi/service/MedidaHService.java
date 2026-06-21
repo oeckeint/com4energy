@@ -1,6 +1,8 @@
 package com.com4energy.recordsapi.service;
 
 import com.com4energy.recordsapi.common.Constants;
+import com.com4energy.recordsapi.controller.medidas.h.dto.MedidaHCellOriginCount;
+import com.com4energy.recordsapi.controller.medidas.h.dto.MedidaHCellOriginResponse;
 import com.com4energy.recordsapi.controller.medidas.h.dto.MedidaHHourlyPoint;
 import com.com4energy.persistence.medidas.medidah.MedidaH;
 import com.com4energy.recordsapi.repository.MedidaHRepository;
@@ -84,5 +86,29 @@ public class MedidaHService {
             return medidaHRepository.findHourlyMatrixByClientIds(start, end, normalizedClientIds);
         }
         return medidaHRepository.findHourlyMatrix(start, end);
+    }
+
+    /**
+     * Detalle de orígenes (archivos de carga) que aportan registros a una celda (cliente/hora/día).
+     */
+    public MedidaHCellOriginResponse findCellOrigins(LocalDate date, Integer clientId, Integer hour) {
+        LocalDateTime start = date.atStartOfDay();
+        LocalDateTime end = date.plusDays(1).atStartOfDay();
+
+        List<MedidaHCellOriginCount> originCounts = medidaHRepository.findCellOrigins(clientId, hour, start, end);
+        long totalRecords = originCounts.stream()
+                .mapToLong(item -> item.getRegistros() == null ? 0L : item.getRegistros())
+                .sum();
+        List<MedidaHCellOriginResponse.Origen> origins = originCounts.stream()
+                .map(item -> new MedidaHCellOriginResponse.Origen(item.getOrigen(), item.getFechaCreacion()))
+                .toList();
+
+        return new MedidaHCellOriginResponse(
+                clientId,
+                hour,
+                totalRecords,
+                origins.size(),
+                origins
+        );
     }
 }
