@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, NgZone, OnChanges, OnDestroy, OnInit, Output, inject } from '@angular/core';
+import { formatEnergyValue } from '../../../core/format-energy';
 
 interface MeasureMatrixRow {
   hour: string;
@@ -1225,11 +1226,7 @@ export class MeasureHourlyMiniChartComponent implements OnChanges, OnDestroy, On
   }
 
   formatAxisValue(value: number): string {
-    const rounded = Math.ceil(value);
-    const sign = rounded < 0 ? '-' : '';
-    const digits = Math.abs(rounded).toString();
-    const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    return `${sign}${grouped}`;
+    return formatEnergyValue(value);
   }
 
 }

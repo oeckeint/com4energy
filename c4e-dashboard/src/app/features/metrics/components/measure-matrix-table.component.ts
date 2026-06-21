@@ -1,16 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
 import { formatDashboardDateTime } from '../../../core/date-time-format';
-
-// Formatea números con formato europeo: miles (.) y redondea hacia arriba (Math.ceil)
-const formatEnergyValue = (value: number | null | undefined): string => {
-  if (value === null || value === undefined) return '-';
-  const rounded = Math.ceil(value);
-  const sign = rounded < 0 ? '-' : '';
-  const digits = Math.abs(rounded).toString();
-  const grouped = digits.replaceAll(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${sign}${grouped}`;
-};
+import { formatEnergyValue } from '../../../core/format-energy';
 
 interface MeasureMatrixRow {
   hour: string;

@@ -3,12 +3,7 @@ import { CommonModule } from '@angular/common';
 import { BaseChartDirective, provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { EnergyMeasurementService } from '../services/energy-measurement.service';
-
-// Formatea números con formato europeo: miles (.) y redondea hacia arriba (Math.ceil)
-const formatEnergyValue = (value: number | null | undefined): string => {
-  if (value === null || value === undefined) return '-';
-  return Math.ceil(value).toLocaleString('es-ES');
-};
+import { formatEnergyValue } from '../../../core/format-energy';
 
 @Component({
   selector: 'app-energy-chart',

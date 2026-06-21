@@ -2,12 +2,7 @@ import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EnergyMeasurementService } from '../services/energy-measurement.service';
 import { BadgeComponent } from '../../../shared/components/badge';
-
-// Formatea números con formato europeo: miles (.) y redondea hacia arriba (Math.ceil)
-const formatEnergyValue = (value: number | null | undefined): string => {
-  if (value === null || value === undefined) return '-';
-  return Math.ceil(value).toLocaleString('es-ES');
-};
+import { formatEnergyValue } from '../../../core/format-energy';
 
 @Component({
   selector: 'app-energy-list',
