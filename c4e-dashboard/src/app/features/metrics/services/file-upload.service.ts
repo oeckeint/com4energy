@@ -21,10 +21,10 @@ export class FileUploadService {
   readonly progress = this.progressSignal.asReadonly();
 
   /**
-   * Allowed file extensions
-   * TEMPORARY: Only .0 revisions are accepted while deduplication strategy is being refined.
+   * Allowed file extensions: revisión/iteración de medida de un dígito (.0 a .9).
+   * El backend acepta el mismo rango; el upsert por fila resuelve la precedencia.
    */
-  readonly ALLOWED_EXTENSIONS = ['0'];
+  readonly ALLOWED_EXTENSIONS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
   readonly MAX_FILE_SIZE_MB = 50;
   readonly MAX_TOTAL_SIZE_MB = 500;
 
@@ -85,11 +85,6 @@ export class FileUploadService {
       // Check file size
       if (file.size > this.MAX_FILE_SIZE_MB * 1024 * 1024) {
         return `El archivo ${file.name} excede el tamaño máximo de ${this.MAX_FILE_SIZE_MB}MB`;
-      }
-
-      // TEMPORARY: Only .0 revisions are accepted for now
-      if (!file.name.endsWith('.0')) {
-        return `El archivo ${file.name} debe tener la extensión .0. Solo se aceptan archivos con revisión inicial (.0) de forma temporal.`;
       }
 
       // Check file extension (validate against allowed extensions)

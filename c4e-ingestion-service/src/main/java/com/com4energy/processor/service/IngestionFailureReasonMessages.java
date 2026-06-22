@@ -34,6 +34,7 @@ public final class IngestionFailureReasonMessages {
             case STALE_LOCK -> Messages.get(FAILURE_REASON_STALE_LOCK);
             case SUPERSEDED_REVISION -> Messages.get(FAILURE_REASON_SUPERSEDED_REVISION);
             case CROSS_FAMILY_COLLISION -> Messages.get(FAILURE_REASON_CROSS_FAMILY_COLLISION);
+            case UNSUPPORTED_MEASURE_TYPE -> Messages.get(FAILURE_REASON_UNSUPPORTED_MEASURE_TYPE);
         };
     }
 

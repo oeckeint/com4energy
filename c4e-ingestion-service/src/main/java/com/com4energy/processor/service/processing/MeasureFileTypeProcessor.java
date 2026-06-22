@@ -58,6 +58,21 @@ public class MeasureFileTypeProcessor implements FileTypeProcessor {
 
     @Override
     public FileTypeProcessingResult process(FileRecord fileRecord, Path processingPath) {
+        // CCH (F5) ya no se ingesta: su tabla (medida_cch_legacy) está en retirada y no tiene
+        // upsert/control de revisión (cada recarga acumularía duplicados). Se rechaza sin escribir;
+        // el evento fileRejected fluye a records-api -> file_record_events + notificación SSE.
+        if (fileRecord.getType() == FileType.MEDIDA_CCH_F5) {
+            String comment = "Medida CCH (F5) no soportada para ingesta: tabla legacy en retirada";
+            log.warn("Rechazando archivo '{}' (id={}): {}",
+                    fileRecord.getOriginalFilename(), fileRecord.getId(), comment);
+            fileRecord.setBusinessResult(BusinessResult.NOT_PERSISTED);
+            return FileTypeProcessingResult.rejected(
+                    FailureReason.UNSUPPORTED_MEASURE_TYPE,
+                    comment,
+                    List.of(FileTypeProcessingResult.DeferredOutboxEvent.fileRejected())
+            );
+        }
+
         long parseStartedAtNanos = System.nanoTime();
 
         // Nota: NO se rechaza por antigüedad a nivel archivo. La precedencia revisión/iteración se
