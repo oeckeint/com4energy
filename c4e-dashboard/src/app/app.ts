@@ -1,6 +1,5 @@
 import { Component, ElementRef, HostListener, OnDestroy, ViewChild, effect, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { EnergyMeasurementService } from './features/metrics/services/energy-measurement.service';
 import { FileProcessingNotificationsService } from './features/metrics/services/file-processing-notifications.service';
 import { FileRecordEventsService } from './features/metrics/services/file-record-events.service';
 import { FileRecordEventItem } from './features/metrics/models/file-record-event.types';
@@ -15,7 +14,6 @@ import { formatDashboardDateTime } from './core/date-time-format';
 })
 export class App implements OnDestroy {
   protected readonly title = signal('c4e-dashboard');
-  protected readonly measurementsService = inject(EnergyMeasurementService);
   protected readonly notificationsService = inject(FileProcessingNotificationsService);
   protected readonly fileRecordEventsService = inject(FileRecordEventsService);
 
@@ -46,8 +44,6 @@ export class App implements OnDestroy {
   private readonly archivosDropdownRootRef?: ElementRef<HTMLElement>;
 
   constructor() {
-    // Cargar por defecto el cliente 3215 al iniciar la aplicación
-    this.selectClient('3215');
     this.notificationsService.connect();
 
     effect(() => {
@@ -75,13 +71,6 @@ export class App implements OnDestroy {
     if (this.refreshDebounceTimer !== null) {
       clearTimeout(this.refreshDebounceTimer);
       this.refreshDebounceTimer = null;
-    }
-  }
-
-  selectClient(clientId: string) {
-    const id = Number(clientId);
-    if (!Number.isNaN(id)) {
-      this.measurementsService.fetchMeasurements(0, 20, id);
     }
   }
 

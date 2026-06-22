@@ -2,7 +2,6 @@ import { Routes, provideRouter, withEnabledBlockingInitialNavigation } from '@an
 
 export const routes: Routes = [
 	{ path: '', redirectTo: 'metrics/qh', pathMatch: 'full' },
-	{ path: 'metrics', loadComponent: () => import('./features/metrics/pages/metrics.page').then(m => m.MetricsPage) },
 
 	{ path: 'metrics/cch', loadComponent: () => import('./features/metrics/pages/medida-cch-view.page').then(m => m.MedidaCchPage) },
 	{ path: 'metrics/qh', loadComponent: () => import('./features/metrics/pages/medida-qh-view.page').then(m => m.MedidaQHPage) },
