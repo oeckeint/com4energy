@@ -2,7 +2,7 @@ package com.com4energy.recordsapi.repository;
 
 import com.com4energy.persistence.medidas.medidah.BaseMedidaHRepository;
 import com.com4energy.persistence.medidas.medidah.MedidaH;
-import com.com4energy.recordsapi.controller.medidas.h.dto.MedidaHCellOriginCount;
+import com.com4energy.recordsapi.controller.medidas.dto.MeasureCellOriginCount;
 import com.com4energy.recordsapi.controller.medidas.h.dto.MedidaHHourlyPoint;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -104,7 +104,7 @@ public interface MedidaHRepository extends BaseMedidaHRepository {
             + "GROUP BY fr.id "
             + "ORDER BY registros DESC, origen ASC",
             nativeQuery = true)
-    List<MedidaHCellOriginCount> findCellOrigins(@Param("clientId") Integer clientId,
+    List<MeasureCellOriginCount> findCellOrigins(@Param("clientId") Integer clientId,
                                                  @Param("hour") Integer hour,
                                                  @Param("start") LocalDateTime start,
                                                  @Param("end") LocalDateTime end);

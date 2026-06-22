@@ -8,7 +8,7 @@ import com.com4energy.recordsapi.controller.common.ResponseHelper;
 import com.com4energy.recordsapi.controller.common.dto.PageResponse;
 import com.com4energy.recordsapi.controller.medidas.DateRangeHelper;
 import com.com4energy.recordsapi.controller.medidas.MedidasConstants;
-import com.com4energy.recordsapi.controller.medidas.h.dto.MedidaHCellOriginResponse;
+import com.com4energy.recordsapi.controller.medidas.dto.MeasureCellOriginResponse;
 import com.com4energy.recordsapi.controller.medidas.h.dto.MedidaHHourlyPoint;
 import com.com4energy.persistence.medidas.medidah.MedidaH;
 import com.com4energy.recordsapi.exception.ResourceNotFoundException;
@@ -103,7 +103,7 @@ public class MedidaHController {
      * apuntado por medida_h.id_file_record (sustituye a la antigua columna "origen").
      */
     @GetMapping(MedidaHConstants.CELL_ORIGINS_PATH)
-    public ResponseEntity<MedidaHCellOriginResponse> getCellOrigins(
+    public ResponseEntity<MeasureCellOriginResponse> getCellOrigins(
             @RequestParam(name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(name = "clientId") Integer clientId,
             @RequestParam(name = "hour") Integer hour) {
@@ -114,7 +114,7 @@ public class MedidaHController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "hour debe estar entre 0 y 23");
         }
 
-        MedidaHCellOriginResponse result = medidaHService.findCellOrigins(date, clientId, hour);
+        MeasureCellOriginResponse result = medidaHService.findCellOrigins(date, clientId, hour);
         return ResponseEntity.ok(result);
     }
 
