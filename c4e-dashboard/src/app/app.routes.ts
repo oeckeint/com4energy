@@ -1,7 +1,7 @@
 import { Routes, provideRouter, withEnabledBlockingInitialNavigation } from '@angular/router';
 
 export const routes: Routes = [
-	{ path: '', redirectTo: 'metrics', pathMatch: 'full' },
+	{ path: '', redirectTo: 'metrics/qh', pathMatch: 'full' },
 	{ path: 'metrics', loadComponent: () => import('./features/metrics/pages/metrics.page').then(m => m.MetricsPage) },
 
 	{ path: 'metrics/cch', loadComponent: () => import('./features/metrics/pages/medida-cch-view.page').then(m => m.MedidaCchPage) },
